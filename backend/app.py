@@ -10,6 +10,8 @@ import json
 import os
 import secrets
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -89,6 +91,62 @@ def password_ok(password: str, saved: str) -> bool:
         return hmac.compare_digest(digest.hex(), digest_hex)
     except (ValueError, TypeError):
         return False
+
+
+def auth_email(username: str) -> str:
+    return f"{username.lower()}@accounts.house-assist.local"
+
+
+def supabase_request(path: str, payload: dict[str, Any], *, admin: bool = False) -> dict[str, Any]:
+    if not SUPABASE_URL:
+        raise RuntimeError("Set SUPABASE_URL on the server.")
+    key = SUPABASE_SECRET_KEY if admin else SUPABASE_PUBLISHABLE_KEY
+    if not key:
+        raise RuntimeError("Supabase authentication is not configured on the server.")
+    request_data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/auth/v1/{path}",
+        data=request_data,
+        headers={"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = json.loads(exc.read().decode("utf-8") or "{}")
+        raise ValueError(detail.get("msg") or detail.get("message") or detail.get("error_description") or "Supabase authentication failed.") from exc
+
+
+def delete_supabase_user(user_id: Any) -> None:
+    if not SUPABASE_URL or not SUPABASE_SECRET_KEY:
+        return
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}",
+        headers={"apikey": SUPABASE_SECRET_KEY, "Authorization": f"Bearer {SUPABASE_SECRET_KEY}"},
+        method="DELETE",
+    )
+    try:
+        urllib.request.urlopen(req, timeout=15).close()
+    except urllib.error.HTTPError:
+        pass
+
+
+def update_supabase_user(user_id: Any, payload: dict[str, Any]) -> None:
+    if not SUPABASE_URL or not SUPABASE_SECRET_KEY:
+        raise RuntimeError("Supabase authentication is not configured on the server.")
+    request_data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/auth/v1/admin/users/{user_id}",
+        data=request_data,
+        headers={"apikey": SUPABASE_SECRET_KEY, "Authorization": f"Bearer {SUPABASE_SECRET_KEY}", "Content-Type": "application/json"},
+        method="PUT",
+    )
+    try:
+        urllib.request.urlopen(req, timeout=15).close()
+    except urllib.error.HTTPError as exc:
+        detail = json.loads(exc.read().decode("utf-8") or "{}")
+        raise ValueError(detail.get("msg") or detail.get("message") or "Supabase authentication update failed.") from exc
 
 
 def token_for(role: str, user_id: Any | None = None) -> str:
@@ -178,26 +236,39 @@ def register():
         return error("Choose whether you need help or offer help.")
     if not location:
         return error("Add your location so we can match you nearby.")
+    services = data.get("services")
+    if not isinstance(services, list):
+        services = [data.get("service")]
+    services = [str(service).strip() for service in services if str(service).strip()]
     try:
-        cur = g.db.execute("INSERT INTO house_assist.users(username,password_hash,role,location,created_at) VALUES(?,?,?,?,?) RETURNING id",
-                           (username, password_hash(password), role, location, int(time.time())))
+        price = int(data.get("price", 0))
+    except (TypeError, ValueError):
+        price = 0
+    if role == "helper" and (not services or any(service not in SERVICES for service in services) or price < 1):
+        return error("Choose a service and add a valid daily price.")
+    try:
+        auth_user = supabase_request("admin/users", {
+            "email": auth_email(username),
+            "password": password,
+            "email_confirm": True,
+            "user_metadata": {"username": username, "role": role, "location": location},
+        }, admin=True)
+        user_id = auth_user["id"]
+        g.db.execute("INSERT INTO house_assist.users(id,username,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?)",
+                     (user_id, username, None, role, location, int(time.time())))
+        g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (user_id,))
+    except ValueError as exc:
+        g.db.rollback()
+        return error(str(exc), 409)
     except pg_errors.UniqueViolation:
         g.db.rollback()
+        if "user_id" in locals():
+            delete_supabase_user(user_id)
         return error("That username is already in use.", 409)
-    user_id = cur.fetchone()["id"]
-    g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (user_id,))
+    except (KeyError, RuntimeError) as exc:
+        g.db.rollback()
+        return error(str(exc), 503)
     if role == "helper":
-        services = data.get("services")
-        if not isinstance(services, list):
-            services = [data.get("service")]
-        services = [str(service).strip() for service in services if str(service).strip()]
-        try:
-            price = int(data.get("price", 0))
-        except (TypeError, ValueError):
-            price = 0
-        if not services or any(service not in SERVICES for service in services) or price < 1:
-            g.db.rollback()
-            return error("Choose a service and add a valid daily price.")
         g.db.execute("INSERT INTO house_assist.helpers(user_id,name,location,services,price) VALUES(?,?,?,?,?)",
                      (user_id, username, location, json.dumps(services), price))
     g.db.commit()
@@ -209,9 +280,15 @@ def register():
 def login():
     data = body()
     username, password, role = str(data.get("username", "")).strip(), str(data.get("password", "")), data.get("role")
-    row = g.db.execute("SELECT * FROM house_assist.users WHERE lower(username)=lower(?)", (username,)).fetchone()
-    if not row or not password_ok(password, row["password_hash"]):
+    try:
+        supabase_request("token?grant_type=password", {
+            "email": auth_email(username), "password": password,
+        })
+    except (ValueError, RuntimeError):
         return error("Username or password is incorrect.", 401)
+    row = g.db.execute("SELECT * FROM house_assist.users WHERE lower(username)=lower(?)", (username,)).fetchone()
+    if not row:
+        return error("This account is not fully configured. Please contact support.", 409)
     if role != row["role"]:
         return error("That account uses a different sign-in option.", 403)
     token = token_for(row["role"], row["id"])
@@ -256,7 +333,7 @@ def update_me():
         if data.get("password"):
             if len(str(data["password"])) < 6:
                 return error("Password needs at least 6 characters.")
-            g.db.execute("UPDATE house_assist.users SET password_hash=? WHERE id=?", (password_hash(str(data["password"])), user["id"]))
+            update_supabase_user(user["id"], {"password": str(data["password"])})
         pref = g.db.execute("SELECT colors FROM house_assist.preferences WHERE user_id=?", (user["id"],)).fetchone()
         colors = data.get("colors", json.loads(pref["colors"]))
         if not isinstance(colors, list) or len(colors) not in (0, 4) or any(not isinstance(c, str) or len(c) != 7 or not c.startswith("#") for c in colors):
@@ -419,13 +496,26 @@ def admin_add_user():
         return error("Enter a username to add.")
     if len(password) < 6:
         return error("Set a temporary password with at least 6 characters.")
+    user_id = None
     try:
-        cur = g.db.execute("INSERT INTO house_assist.users(username,password_hash,role,location,created_at) VALUES(?,?,?,?,?) RETURNING id",
-                           (name, password_hash(password), "customer", "Accra", int(time.time())))
-        g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (cur.fetchone()["id"],))
+        auth_user = supabase_request("admin/users", {
+            "email": auth_email(name),
+            "password": password,
+            "email_confirm": True,
+            "user_metadata": {"username": name, "role": "customer", "location": "Accra"},
+        }, admin=True)
+        user_id = auth_user["id"]
+        g.db.execute("INSERT INTO house_assist.users(id,username,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?)",
+                     (user_id, name, None, "customer", "Accra", int(time.time())))
+        g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (user_id,))
         g.db.commit()
+    except (ValueError, RuntimeError) as exc:
+        g.db.rollback()
+        return error(str(exc), 409 if isinstance(exc, ValueError) else 503)
     except pg_errors.UniqueViolation:
         g.db.rollback()
+        if user_id:
+            delete_supabase_user(user_id)
         return error("That username is already in use.", 409)
     return jsonify({"ok": True}), 201
 
