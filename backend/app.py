@@ -8,6 +8,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import time
 import urllib.error
@@ -93,7 +94,12 @@ def password_ok(password: str, saved: str) -> bool:
         return False
 
 
+def valid_email(value: str) -> bool:
+    return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value))
+
+
 def auth_email(username: str) -> str:
+    """Compatibility identity for administrator-created password accounts."""
     return f"{username.lower()}@accounts.house-assist.local"
 
 
@@ -249,11 +255,14 @@ def auth_config():
 def register():
     data = body()
     username, password = str(data.get("username", "")).strip(), str(data.get("password", ""))
+    email = str(data.get("email", "")).strip().lower()
     role, location = data.get("role"), str(data.get("location", "")).strip()
     if len(username) < 2 or len(username) > 40:
         return error("Username must be between 2 and 40 characters.")
     if len(password) < 6:
         return error("Password needs at least 6 characters.")
+    if not valid_email(email):
+        return error("Enter a valid email address.")
     if role not in ("customer", "helper"):
         return error("Choose whether you need help or offer help.")
     if not location:
@@ -270,14 +279,14 @@ def register():
         return error("Choose a service and add a valid daily price.")
     try:
         auth_user = supabase_request("admin/users", {
-            "email": auth_email(username),
+            "email": email,
             "password": password,
             "email_confirm": True,
             "user_metadata": {"username": username, "role": role, "location": location},
         }, admin=True)
         user_id = auth_user["id"]
-        g.db.execute("INSERT INTO house_assist.users(id,username,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?)",
-                     (user_id, username, None, role, location, int(time.time())))
+        g.db.execute("INSERT INTO house_assist.users(id,username,email,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?,?)",
+                     (user_id, username, email, None, role, location, int(time.time())))
         g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (user_id,))
     except ValueError as exc:
         g.db.rollback()
@@ -302,24 +311,29 @@ def register():
 def login():
     data = body()
     username, password, role = str(data.get("username", "")).strip(), str(data.get("password", "")), data.get("role")
+    email = str(data.get("email", "")).strip().lower()
+    if not valid_email(email):
+        return error("Enter a valid email address.")
     row = g.db.execute("SELECT * FROM house_assist.users WHERE lower(username)=lower(?)", (username,)).fetchone()
     if not row:
         return error("Username or password is incorrect.", 401)
+    if row["email"] and row["email"].lower() != email:
+        return error("Username, email or password is incorrect.", 401)
     try:
         supabase_request("token?grant_type=password", {
-            "email": auth_email(username), "password": password,
+            "email": email, "password": password,
         })
     except (ValueError, RuntimeError):
         if not row["password_hash"] or not password_ok(password, row["password_hash"]):
             return error("Username or password is incorrect.", 401)
         try:
             supabase_request("admin/users", {
-                "email": auth_email(username),
+                "email": email,
                 "password": password,
                 "email_confirm": True,
                 "user_metadata": {"username": username, "role": row["role"], "location": row["location"]},
             }, admin=True)
-            g.db.execute("UPDATE house_assist.users SET password_hash=NULL WHERE id=?", (row["id"],))
+            g.db.execute("UPDATE house_assist.users SET email=?,password_hash=NULL WHERE id=?", (email, row["id"]))
             g.db.commit()
         except (ValueError, RuntimeError) as exc:
             g.db.rollback()
@@ -343,12 +357,17 @@ def google_login():
 
     data = body()
     user_id = google_user.get("id")
+    email = str(google_user.get("email", "")).strip().lower()
+    if not valid_email(email):
+        return error("Google did not provide a valid email address.", 401)
     metadata = google_user.get("user_metadata") or {}
     row = g.db.execute("SELECT * FROM house_assist.users WHERE id=?", (user_id,)).fetchone()
     if not row:
-        username = str(data.get("username") or metadata.get("preferred_username") or metadata.get("name") or google_user.get("email", "").split("@")[0]).strip()
+        username = str(data.get("username", "")).strip()
         role = data.get("role")
         location = str(data.get("location", "")).strip()
+        if not username:
+            return jsonify({"error": "Choose a username to finish your Google signup.", "code": "PROFILE_REQUIRED", "email": email}), 422
         if len(username) < 2 or len(username) > 40 or role not in ("customer", "helper") or not location:
             return error("Complete your username, role and region before continuing with Google.", 422)
         services = data.get("services") or []
@@ -359,8 +378,8 @@ def google_login():
         if role == "helper" and (not isinstance(services, list) or not services or any(service not in SERVICES for service in services) or price < 1):
             return error("Choose your services and add a valid daily price before continuing with Google.", 422)
         try:
-            g.db.execute("INSERT INTO house_assist.users(id,username,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?)",
-                         (user_id, username, None, role, location, int(time.time())))
+            g.db.execute("INSERT INTO house_assist.users(id,username,email,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?,?)",
+                         (user_id, username, email, None, role, location, int(time.time())))
             g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (user_id,))
             if role == "helper":
                 g.db.execute("INSERT INTO house_assist.helpers(user_id,name,location,services,price) VALUES(?,?,?,?,?)",
@@ -370,6 +389,9 @@ def google_login():
             g.db.rollback()
             return error("That username is already in use.", 409)
         row = g.db.execute("SELECT * FROM house_assist.users WHERE id=?", (user_id,)).fetchone()
+    elif not row["email"]:
+        g.db.execute("UPDATE house_assist.users SET email=? WHERE id=?", (email, user_id))
+        g.db.commit()
     token = token_for(row["role"], row["id"])
     return jsonify({"token": token, "user": {"id": row["id"], "name": row["username"], "role": row["role"], "loc": row["location"]}})
 
@@ -584,8 +606,8 @@ def admin_add_user():
             "user_metadata": {"username": name, "role": "customer", "location": "Accra"},
         }, admin=True)
         user_id = auth_user["id"]
-        g.db.execute("INSERT INTO house_assist.users(id,username,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?)",
-                     (user_id, name, None, "customer", "Accra", int(time.time())))
+        g.db.execute("INSERT INTO house_assist.users(id,username,email,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?,?)",
+                     (user_id, name, auth_email(name), None, "customer", "Accra", int(time.time())))
         g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (user_id,))
         g.db.commit()
     except (ValueError, RuntimeError) as exc:
