@@ -14,6 +14,60 @@
   const reportError = (element, err) => { if (element) element.textContent = err.message; else toast(err.message); };
   const storeToken = value => { token = value || ''; if (token) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY); };
   const showError = err => toast(err.message);
+  const GOOGLE_PENDING_KEY = 'house-assist-google-pending';
+  let supabaseClient;
+
+  const googleDetails = () => ({
+    username: $('#u').value.trim(),
+    role: S.role,
+    location: $('#loc').value.trim(),
+    services: [...document.querySelectorAll('#svcBox input:checked')].map(input => input.value),
+    price: Number($('#pr').value),
+  });
+
+  async function continueWithGoogle() {
+    const signup = S.mode === 'signup';
+    const details = googleDetails();
+    if (signup && !details.username) return reportError($('#aErr'), new Error('Enter a username before continuing with Google.'));
+    if (signup && !details.location) return reportError($('#aErr'), new Error('Select your region before continuing with Google.'));
+    if (signup && S.role === 'helper' && (!details.services.length || details.price < 1)) {
+      return reportError($('#aErr'), new Error('Choose your services and add your daily price before continuing with Google.'));
+    }
+    try {
+      const config = await request('/auth/config');
+      if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
+      supabaseClient = window.supabase.createClient(config.url, config.publishable_key);
+      sessionStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify(signup ? details : {}));
+      const { error: oauthError } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + window.location.pathname },
+      });
+      if (oauthError) throw oauthError;
+    } catch (err) { reportError($('#aErr'), err); }
+  }
+
+  async function finishGoogleSignIn() {
+    const oauthCallback = window.location.search.includes('code=') || window.location.hash.includes('access_token');
+    if (!window.supabase && !oauthCallback) return;
+    const config = await request('/auth/config');
+    if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
+    supabaseClient = window.supabase.createClient(config.url, config.publishable_key);
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return;
+    const details = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
+    sessionStorage.removeItem(GOOGLE_PENDING_KEY);
+    const result = await request('/auth/google', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify(details),
+    });
+    storeToken(result.token);
+    applyUser(result.user);
+    await refreshHelpers();
+    go('home');
+  }
+
+  $('#googleAuth').onclick = continueWithGoogle;
 
   async function refreshHelpers() {
     try { helpers = await request('/helpers'); }
@@ -190,6 +244,11 @@
   (async () => {
     await Promise.all([refreshHelpers(), refreshGuide()]);
     try {
+      await finishGoogleSignIn();
+      if (token) {
+        const user = await request('/me'); applyUser(user); go('home');
+        return;
+      }
       const brand = await request('/branding').catch(() => null);
       applyBranding(brand);
       if (!token) return;

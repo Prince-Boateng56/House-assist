@@ -118,6 +118,21 @@ def supabase_request(path: str, payload: dict[str, Any], *, admin: bool = False)
         raise ValueError(detail.get("msg") or detail.get("message") or detail.get("error_description") or "Supabase authentication failed.") from exc
 
 
+def supabase_user(access_token: str) -> dict[str, Any]:
+    if not SUPABASE_URL or not SUPABASE_PUBLISHABLE_KEY:
+        raise RuntimeError("Supabase authentication is not configured on the server.")
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/auth/v1/user",
+        headers={"apikey": SUPABASE_PUBLISHABLE_KEY, "Authorization": f"Bearer {access_token}"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raise ValueError("Google authentication could not be verified.") from exc
+
+
 def delete_supabase_user(user_id: Any) -> None:
     if not SUPABASE_URL or not SUPABASE_SECRET_KEY:
         return
@@ -223,6 +238,13 @@ def health():
     return jsonify({"ok": True})
 
 
+@app.get("/api/auth/config")
+def auth_config():
+    if not SUPABASE_URL or not SUPABASE_PUBLISHABLE_KEY:
+        return error("Supabase authentication is not configured on the server.", 503)
+    return jsonify({"url": SUPABASE_URL, "publishable_key": SUPABASE_PUBLISHABLE_KEY})
+
+
 @app.post("/api/auth/register")
 def register():
     data = body()
@@ -304,6 +326,50 @@ def login():
             return error(str(exc), 503)
     if role != row["role"]:
         return error("That account uses a different sign-in option.", 403)
+    token = token_for(row["role"], row["id"])
+    return jsonify({"token": token, "user": {"id": row["id"], "name": row["username"], "role": row["role"], "loc": row["location"]}})
+
+
+@app.post("/api/auth/google")
+def google_login():
+    auth = request.headers.get("Authorization", "")
+    access_token = auth[7:] if auth.lower().startswith("bearer ") else ""
+    if not access_token:
+        return error("Google authentication is missing.", 401)
+    try:
+        google_user = supabase_user(access_token)
+    except (ValueError, RuntimeError) as exc:
+        return error(str(exc), 401)
+
+    data = body()
+    user_id = google_user.get("id")
+    metadata = google_user.get("user_metadata") or {}
+    row = g.db.execute("SELECT * FROM house_assist.users WHERE id=?", (user_id,)).fetchone()
+    if not row:
+        username = str(data.get("username") or metadata.get("preferred_username") or metadata.get("name") or google_user.get("email", "").split("@")[0]).strip()
+        role = data.get("role")
+        location = str(data.get("location", "")).strip()
+        if len(username) < 2 or len(username) > 40 or role not in ("customer", "helper") or not location:
+            return error("Complete your username, role and region before continuing with Google.", 422)
+        services = data.get("services") or []
+        try:
+            price = int(data.get("price", 0))
+        except (TypeError, ValueError):
+            price = 0
+        if role == "helper" and (not isinstance(services, list) or not services or any(service not in SERVICES for service in services) or price < 1):
+            return error("Choose your services and add a valid daily price before continuing with Google.", 422)
+        try:
+            g.db.execute("INSERT INTO house_assist.users(id,username,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?)",
+                         (user_id, username, None, role, location, int(time.time())))
+            g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (user_id,))
+            if role == "helper":
+                g.db.execute("INSERT INTO house_assist.helpers(user_id,name,location,services,price) VALUES(?,?,?,?,?)",
+                             (user_id, username, location, json.dumps(services), price))
+            g.db.commit()
+        except pg_errors.UniqueViolation:
+            g.db.rollback()
+            return error("That username is already in use.", 409)
+        row = g.db.execute("SELECT * FROM house_assist.users WHERE id=?", (user_id,)).fetchone()
     token = token_for(row["role"], row["id"])
     return jsonify({"token": token, "user": {"id": row["id"], "name": row["username"], "role": row["role"], "loc": row["location"]}})
 

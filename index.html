@@ -87,6 +87,8 @@
   <label for="pw">Password</label><div class="pwrap"><input id="pw" type="password" autocomplete="current-password" placeholder="At least 6 characters"><button type="button" id="eye">Show</button></div>
   <div class="rm" id="rmRow"><label><input type="checkbox"> Remember me</label><a id="fg">Forgot password?</a></div>
   <button class="btn" style="width:100%" id="go">Log in</button>
+  <button class="btn alt" style="width:100%;margin-top:10px" id="googleAuth" type="button">Continue with Google</button>
+  <p class="mut" style="text-align:center;margin:10px 0 0;font-size:12px">Google sign-in is managed securely by Supabase.</p>
   <p id="aErr" style="color:#FF8A80;min-height:20px;margin:8px 0 0;font-size:14px"></p>
   <p class="swl" id="swL"></p>
   <p class="swl" style="margin-top:8px"><a id="backHome">← Back to home</a></p>
@@ -100,4 +102,4 @@
 </div>
 <div id="modal" class="hide"></div>
 
-<script src="js/script.js"></script><script src="app.js"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/script.js"></script><script src="app.js"></script></body></html>
