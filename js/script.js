@@ -8,6 +8,27 @@ const stars=n=>'★'.repeat(n)+'☆'.repeat(5-n);
 const ini=n=>n.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
 const toast=t=>{const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.append(e);setTimeout(()=>e.remove(),2600)};
 
+const releaseLoadingButton=button=>{
+ if(!button)return;
+ clearTimeout(button._loadingTimer);
+ button.classList.remove('is-loading');
+ button.disabled=false;
+ if(window.__houseAssistLoadingButton===button)window.__houseAssistLoadingButton=null;
+};
+document.addEventListener('click',e=>{
+ const button=e.target.closest('button');
+ if(!button||button.disabled||button.classList.contains('is-loading'))return;
+ button.classList.add('is-loading');
+ button.disabled=true;
+ window.__houseAssistLoadingButton=button;
+ button._loadingTimer=setTimeout(()=>releaseLoadingButton(button),1200);
+},true);
+const houseAssistFetch=window.fetch.bind(window);
+window.fetch=(...args)=>{
+ const loadingButton=window.__houseAssistLoadingButton;
+ return houseAssistFetch(...args).finally(()=>releaseLoadingButton(loadingButton));
+};
+
 /* auth */
 function authUI(){
  $('#roleSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.r==S.role));
