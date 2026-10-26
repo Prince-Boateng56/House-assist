@@ -53,7 +53,11 @@
     const details = { username, password, role: S.role };
     if (signup) {
       details.location = $('#loc').value.trim();
-      if (S.role === 'helper') { details.service = $('#svc').value; details.price = Number($('#pr').value); }
+      if (S.role === 'helper') {
+        details.services = [...document.querySelectorAll('#svcBox input:checked')].map(input => input.value);
+        details.service = details.services[0];
+        details.price = Number($('#pr').value);
+      }
     }
     try {
       const result = await request(signup ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(details) });
