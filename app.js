@@ -82,7 +82,7 @@
       window.history.replaceState({}, document.title, window.location.pathname);
       throw new Error('Google sign-in was rejected by Supabase: ' + callbackError.replace(/\+/g, ' '));
     }
-    if (!oauthCallback) return;
+    if (!oauthCallback) return false;
     if (oauthCallback) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -126,13 +126,14 @@
       $('#pr').value = details.price || '';
       $('#googleAuth').textContent = 'Complete Google signup';
       $('#aErr').textContent = `Google verified ${err.email || session.user.email}. Choose a username to finish creating your account.`;
-      return;
+      return true;
     }
     sessionStorage.removeItem(GOOGLE_PENDING_KEY);
     storeToken(result.token);
     applyUser(result.user);
     await refreshHelpers();
     go('home');
+    return true;
   }
 
   $('#googleAuth').onclick = continueWithGoogle;
@@ -318,7 +319,8 @@
       window.location.search.includes('error_description=') ||
       window.location.hash.includes('access_token');
     try {
-      await finishGoogleSignIn();
+      const googleHandled = await finishGoogleSignIn();
+      if (googleHandled) return;
       if (token) {
         const user = await request('/me'); applyUser(user); go('home');
         return;
