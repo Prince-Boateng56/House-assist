@@ -36,12 +36,13 @@
     if (googleSession) return completeGoogleProfile();
     $('#em').readOnly = false;
     $('#googleAuth').textContent = 'Continue with Google';
-    if (!details.location) return reportError($('#aErr'), new Error('Select your region before continuing with Google.'));
+    const signup = S.mode === 'signup';
+    if (signup && !details.location) return reportError($('#aErr'), new Error('Select your region before continuing with Google.'));
     try {
       const config = await request('/auth/config');
       if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
       supabaseClient = window.supabase.createClient(config.url, config.publishable_key);
-      sessionStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify({ ...details, username: '' }));
+      sessionStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify({ ...details, username: '', mode: S.mode }));
       const { error: oauthError } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin + window.location.pathname },
@@ -110,10 +111,19 @@
     } catch (err) {
       if (err.code !== 'PROFILE_REQUIRED') throw err;
       googleSession = session.access_token;
+      if (details.mode === 'login') {
+        throw new Error('No House Assist account exists for this Google account. Sign up first.');
+      }
       showAuth('signup', details.role || 'customer');
       $('#u').value = '';
       $('#em').value = err.email || session.user.email || '';
       $('#em').readOnly = true;
+      $('#loc').value = details.location || '';
+      $('#loc + .dd button').textContent = details.location || 'Select your region';
+      document.querySelectorAll('#svcBox input').forEach(input => {
+        input.checked = details.services?.includes(input.value) || false;
+      });
+      $('#pr').value = details.price || '';
       $('#googleAuth').textContent = 'Complete Google signup';
       $('#aErr').textContent = `Google verified ${err.email || session.user.email}. Choose a username to finish creating your account.`;
       return;
