@@ -22,6 +22,20 @@ The API stores accounts, helper listings, sessions, hires, payment confirmations
 
 Authentication uses Supabase Auth for passwords and the private `house_assist` schema for application profiles and roles. Run the updated schema after pulling changes. Accounts created before this authentication change are legacy records and must be recreated or have their password reset before they can use Supabase Auth.
 
+### Enable Google sign-in
+
+1. In Supabase, open **Authentication → Providers → Google** and enable Google.
+2. In Google Cloud Console, create a **Web application** OAuth client.
+3. Add this Supabase callback URL to the Google OAuth client’s authorized redirect URIs:
+   `https://svhccqudltmkeninethu.supabase.co/auth/v1/callback`
+4. Copy the Google client ID and client secret into the Supabase Google provider settings.
+5. In Supabase **Authentication → URL Configuration**, set the Site URL to `https://house-assist-omega.vercel.app` and add these redirect URLs:
+   - `https://house-assist-omega.vercel.app`
+   - `http://127.0.0.1:5000`
+6. Deploy the application. The auth screen’s **Continue with Google** button preserves the selected customer/helper role and collects the required profile details for new accounts.
+
+Google OAuth configuration is managed in Supabase and Google Cloud; never put the Google client secret in the repository or browser code.
+
 ## Deploy to Vercel
 
 The static frontend is served by Vercel and the Flask API is exposed as the Python function in [`api/index.py`](api/index.py). In the Vercel project settings, add these environment variables:
