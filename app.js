@@ -326,7 +326,8 @@
       if (oauthCallback) {
         const pending = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
         showAuth(pending.role ? 'signup' : 'login', pending.role || 'customer');
-        reportError($('#aErr'), err);
+        $('#aErr').textContent = '';
+        console.warn('Google sign-in did not complete:', err.message);
       }
     }
   })();
