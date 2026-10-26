@@ -73,6 +73,28 @@ button {
   opacity: .45;
   cursor: not-allowed;
 }
+button.is-loading {
+  position: relative;
+  pointer-events: none;
+  color: transparent !important;
+}
+button.is-loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin: -8px 0 0 -8px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  color: #fff;
+  animation: button-spin .7s linear infinite;
+}
+@keyframes button-spin {
+  to { transform: rotate(360deg); }
+}
 input,
 select {
   width: 100%;
