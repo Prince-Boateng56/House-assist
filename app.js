@@ -8,7 +8,12 @@
     if (token) headers.Authorization = `Bearer ${token}`;
     const response = await fetch(API + path, { ...options, headers });
     const value = response.status === 204 ? null : await response.json();
-    if (!response.ok) throw new Error(value?.error || 'The request could not be completed.');
+    if (!response.ok) {
+      const requestError = new Error(value?.error || 'The request could not be completed.');
+      requestError.code = value?.code;
+      requestError.email = value?.email;
+      throw requestError;
+    }
     return value;
   };
   const reportError = (element, err) => { if (element) element.textContent = err.message; else toast(err.message); };
@@ -16,6 +21,7 @@
   const showError = err => toast(err.message);
   const GOOGLE_PENDING_KEY = 'house-assist-google-pending';
   let supabaseClient;
+  let googleSession;
 
   const googleDetails = () => ({
     username: $('#u').value.trim(),
@@ -28,7 +34,9 @@
   async function continueWithGoogle() {
     const signup = S.mode === 'signup';
     const details = googleDetails();
-    if (signup && !details.username) return reportError($('#aErr'), new Error('Enter a username before continuing with Google.'));
+    if (googleSession) return completeGoogleProfile();
+    $('#em').readOnly = false;
+    $('#googleAuth').textContent = 'Continue with Google';
     if (signup && !details.location) return reportError($('#aErr'), new Error('Select your region before continuing with Google.'));
     if (signup && S.role === 'helper' && (!details.services.length || details.price < 1)) {
       return reportError($('#aErr'), new Error('Choose your services and add your daily price before continuing with Google.'));
@@ -37,12 +45,34 @@
       const config = await request('/auth/config');
       if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
       supabaseClient = window.supabase.createClient(config.url, config.publishable_key);
-      sessionStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify(signup ? details : {}));
+      sessionStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify(signup ? { ...details, username: '' } : {}));
       const { error: oauthError } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin + window.location.pathname },
       });
       if (oauthError) throw oauthError;
+    } catch (err) { reportError($('#aErr'), err); }
+  }
+
+  async function completeGoogleProfile() {
+    const details = googleDetails();
+    if (!details.username) return reportError($('#aErr'), new Error('Enter a username to finish your Google signup.'));
+    if (!details.location) return reportError($('#aErr'), new Error('Select your region before continuing.'));
+    if (S.role === 'helper' && (!details.services.length || details.price < 1)) {
+      return reportError($('#aErr'), new Error('Choose your services and add your daily price before continuing.'));
+    }
+    try {
+      const result = await request('/auth/google', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + googleSession },
+        body: JSON.stringify(details),
+      });
+      googleSession = null;
+      sessionStorage.removeItem(GOOGLE_PENDING_KEY);
+      storeToken(result.token);
+      applyUser(result.user);
+      await refreshHelpers();
+      go('home');
     } catch (err) { reportError($('#aErr'), err); }
   }
 
@@ -52,7 +82,7 @@
     const callbackError = callbackUrl.searchParams.get('error_description') || callbackUrl.searchParams.get('error');
     const oauthCallback = Boolean(callbackCode || callbackError || callbackUrl.hash.includes('access_token'));
     if (callbackError) {
-      throw new Error(`Google sign-in was rejected by Supabase: ${callbackError.replace(/\+/g, ' ')}`);
+      throw new Error('Google sign-in was rejected by Supabase: ' + callbackError.replace(/\+/g, ' '));
     }
     if (!window.supabase && !oauthCallback) return;
     const config = await request('/auth/config');
@@ -70,13 +100,26 @@
     }
     if (!session) throw new Error('Google sign-in did not complete. Please try again.');
     const details = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
-    sessionStorage.removeItem(GOOGLE_PENDING_KEY);
     window.history.replaceState({}, document.title, window.location.pathname);
-    const result = await request('/auth/google', {
+    let result;
+    try {
+      result = await request('/auth/google', {
       method: 'POST',
       headers: { Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify(details),
-    });
+      });
+    } catch (err) {
+      if (err.code !== 'PROFILE_REQUIRED') throw err;
+      googleSession = session.access_token;
+      showAuth('signup', details.role || 'customer');
+      $('#u').value = '';
+      $('#em').value = err.email || session.user.email || '';
+      $('#em').readOnly = true;
+      $('#googleAuth').textContent = 'Complete Google signup';
+      $('#aErr').textContent = `Google verified ${err.email || session.user.email}. Choose a username to finish creating your account.`;
+      return;
+    }
+    sessionStorage.removeItem(GOOGLE_PENDING_KEY);
     storeToken(result.token);
     applyUser(result.user);
     await refreshHelpers();
@@ -115,12 +158,14 @@
   };
 
   $('#go').onclick = async () => {
-    const username = $('#u').value.trim(), password = $('#pw').value;
+    $('#em').readOnly = false;
+    const username = $('#u').value.trim(), email = $('#em').value.trim(), password = $('#pw').value;
     const signup = S.mode === 'signup';
     $('#aErr').textContent = '';
     if (!username) return reportError($('#aErr'), new Error('Enter your username.'));
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reportError($('#aErr'), new Error('Enter a valid email address.'));
     if (password.length < 6) return reportError($('#aErr'), new Error('Password needs at least 6 characters.'));
-    const details = { username, password, role: S.role };
+    const details = { username, email, password, role: S.role };
     if (signup) {
       details.location = $('#loc').value.trim();
       if (S.role === 'helper') {

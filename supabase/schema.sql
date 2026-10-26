@@ -7,12 +7,15 @@ create schema if not exists house_assist;
 create table if not exists house_assist.users (
   id uuid primary key default gen_random_uuid(),
   username text not null,
+  email text,
   password_hash text,
   role text not null check (role in ('customer', 'helper')),
   location text not null,
   created_at bigint not null
 );
+alter table house_assist.users add column if not exists email text;
 create unique index if not exists users_username_lower_uq on house_assist.users (lower(username));
+create unique index if not exists users_email_lower_uq on house_assist.users (lower(email)) where email is not null;
 alter table house_assist.users alter column password_hash drop not null;
 
 create table if not exists house_assist.helpers (
