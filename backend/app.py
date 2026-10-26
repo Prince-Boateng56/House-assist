@@ -363,6 +363,8 @@ def google_login():
     metadata = google_user.get("user_metadata") or {}
     row = g.db.execute("SELECT * FROM house_assist.users WHERE id=?", (user_id,)).fetchone()
     if not row:
+        if data.get("mode") == "login":
+            return error("No House Assist account exists for this Google account. Sign up first.", 404)
         username = str(data.get("username", "")).strip()
         role = data.get("role")
         location = str(data.get("location", "")).strip()
