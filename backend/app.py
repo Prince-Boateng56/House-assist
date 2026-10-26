@@ -32,9 +32,9 @@ SUPABASE_JWKS_URL = os.environ.get("SUPABASE_JWKS_URL", "")
 SUPABASE_DB_URL = os.environ.get("SUPABASE_DB_URL", "")
 TOKEN_TTL = 60 * 60 * 24 * 14
 SERVICES = {
-    "House Cleaning", "Plumbing & Electrical", "Painting & Repairs",
-    "Gardening & Lawn Care", "Laundry & Ironing", "Cooking & Kitchen Assist",
-    "Moving & Packing", "Elderly & Child Care",
+    "House Cleaning", "Plumbing", "Electrical", "Mason", "Painting", "Repairs",
+    "Gardening", "Lawn Care", "Laundry", "Ironing", "Cooking", "Kitchen Assist",
+    "Moving", "Packing", "Elderly Care", "Child Care",
 }
 app = Flask(__name__, static_folder=None)
 
@@ -101,6 +101,8 @@ def token_for(role: str, user_id: Any | None = None) -> str:
 
 @app.before_request
 def open_db():
+    if request.path == "/api/health":
+        return
     g.db = connect()
 
 
@@ -141,12 +143,21 @@ def helper_json(row):
 
 @app.get("/")
 def index():
-    return send_from_directory(ROOT, "house-assist.html")
+    return send_from_directory(ROOT, "index.html")
 
 
 @app.get("/app.js")
 def frontend_script():
     return send_from_directory(ROOT, "app.js")
+
+
+@app.get("/<path:filename>")
+def frontend_asset(filename: str):
+    """Serve the static frontend when running Flask directly."""
+    candidate = (ROOT / filename).resolve()
+    if ROOT not in candidate.parents or not candidate.is_file():
+        return error("Not found.", 404)
+    return send_from_directory(ROOT, filename)
 
 
 @app.get("/api/health")
@@ -176,16 +187,19 @@ def register():
     user_id = cur.fetchone()["id"]
     g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (user_id,))
     if role == "helper":
-        service = data.get("service")
+        services = data.get("services")
+        if not isinstance(services, list):
+            services = [data.get("service")]
+        services = [str(service).strip() for service in services if str(service).strip()]
         try:
             price = int(data.get("price", 0))
         except (TypeError, ValueError):
             price = 0
-        if service not in SERVICES or price < 1:
+        if not services or any(service not in SERVICES for service in services) or price < 1:
             g.db.rollback()
             return error("Choose a service and add a valid daily price.")
         g.db.execute("INSERT INTO house_assist.helpers(user_id,name,location,services,price) VALUES(?,?,?,?,?)",
-                     (user_id, username, location, json.dumps([service]), price))
+                     (user_id, username, location, json.dumps(services), price))
     g.db.commit()
     token = token_for(role, user_id)
     return jsonify({"token": token, "user": {"id": user_id, "name": username, "role": role, "loc": location}}), 201
