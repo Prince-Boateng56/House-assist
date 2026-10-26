@@ -49,7 +49,11 @@
   async function finishGoogleSignIn() {
     const callbackUrl = new URL(window.location.href);
     const callbackCode = callbackUrl.searchParams.get('code');
-    const oauthCallback = Boolean(callbackCode || callbackUrl.hash.includes('access_token'));
+    const callbackError = callbackUrl.searchParams.get('error_description') || callbackUrl.searchParams.get('error');
+    const oauthCallback = Boolean(callbackCode || callbackError || callbackUrl.hash.includes('access_token'));
+    if (callbackError) {
+      throw new Error(`Google sign-in was rejected by Supabase: ${callbackError.replace(/\+/g, ' ')}`);
+    }
     if (!window.supabase && !oauthCallback) return;
     const config = await request('/auth/config');
     if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
@@ -255,7 +259,10 @@
 
   (async () => {
     await Promise.all([refreshHelpers(), refreshGuide()]);
-    const oauthCallback = window.location.search.includes('code=') || window.location.hash.includes('access_token');
+    const oauthCallback = window.location.search.includes('code=') ||
+      window.location.search.includes('error=') ||
+      window.location.search.includes('error_description=') ||
+      window.location.hash.includes('access_token');
     try {
       await finishGoogleSignIn();
       if (token) {
