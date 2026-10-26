@@ -1,2 +1,11 @@
 [tool.vercel]
 entrypoint = "backend.app:app"
+
+[project]
+name = "house-assist"
+version = "1.0.0"
+dependencies = [
+  "Flask>=3.1,<4",
+  "psycopg[binary]>=3.2,<4",
+  "python-dotenv>=1.0,<2",
+]
