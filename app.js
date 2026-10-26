@@ -32,20 +32,16 @@
   });
 
   async function continueWithGoogle() {
-    const signup = S.mode === 'signup';
     const details = googleDetails();
     if (googleSession) return completeGoogleProfile();
     $('#em').readOnly = false;
     $('#googleAuth').textContent = 'Continue with Google';
-    if (signup && !details.location) return reportError($('#aErr'), new Error('Select your region before continuing with Google.'));
-    if (signup && S.role === 'helper' && (!details.services.length || details.price < 1)) {
-      return reportError($('#aErr'), new Error('Choose your services and add your daily price before continuing with Google.'));
-    }
+    if (!details.location) return reportError($('#aErr'), new Error('Select your region before continuing with Google.'));
     try {
       const config = await request('/auth/config');
       if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
       supabaseClient = window.supabase.createClient(config.url, config.publishable_key);
-      sessionStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify(signup ? { ...details, username: '' } : {}));
+      sessionStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify({ ...details, username: '' }));
       const { error: oauthError } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin + window.location.pathname },

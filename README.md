@@ -22,7 +22,7 @@ The API stores accounts, helper listings, sessions, hires, payment confirmations
 
 Authentication uses Supabase Auth for passwords and the private `house_assist` schema for application profiles and roles. Run the updated schema after pulling changes. Accounts created before this authentication change are legacy records and must be recreated or have their password reset before they can use Supabase Auth.
 
-Password accounts require a valid email address, username, password and role-specific profile details. The real email is stored in Supabase Auth and in `house_assist.users`; login requires both the username and the matching email. Google accounts use the email returned by Google and new Google users choose their House Assist username after Google authentication.
+Password accounts require a valid email address, username, password and role-specific profile details. The real email is stored in Supabase Auth and in `house_assist.users`; login requires both the username and the matching email. For Google signup or sign-in, the selected region is the only information required before pressing the Google button. Google accounts use the email returned by Google; new Google users choose their House Assist username and any remaining role-specific profile details after Google authentication.
 
 ### Enable Google sign-in
 
