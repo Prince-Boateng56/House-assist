@@ -78,9 +78,13 @@
     const callbackError = callbackUrl.searchParams.get('error_description') || callbackUrl.searchParams.get('error');
     const oauthCallback = Boolean(callbackCode || callbackError || callbackUrl.hash.includes('access_token'));
     if (callbackError) {
+      window.history.replaceState({}, document.title, window.location.pathname);
       throw new Error('Google sign-in was rejected by Supabase: ' + callbackError.replace(/\+/g, ' '));
     }
     if (!window.supabase && !oauthCallback) return;
+    if (oauthCallback) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     const config = await request('/auth/config');
     if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
     supabaseClient = window.supabase.createClient(config.url, config.publishable_key);
@@ -96,7 +100,6 @@
     }
     if (!session) throw new Error('Google sign-in did not complete. Please try again.');
     const details = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
-    window.history.replaceState({}, document.title, window.location.pathname);
     let result;
     try {
       result = await request('/auth/google', {
