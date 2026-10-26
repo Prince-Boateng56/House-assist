@@ -280,15 +280,28 @@ def register():
 def login():
     data = body()
     username, password, role = str(data.get("username", "")).strip(), str(data.get("password", "")), data.get("role")
+    row = g.db.execute("SELECT * FROM house_assist.users WHERE lower(username)=lower(?)", (username,)).fetchone()
+    if not row:
+        return error("Username or password is incorrect.", 401)
     try:
         supabase_request("token?grant_type=password", {
             "email": auth_email(username), "password": password,
         })
     except (ValueError, RuntimeError):
-        return error("Username or password is incorrect.", 401)
-    row = g.db.execute("SELECT * FROM house_assist.users WHERE lower(username)=lower(?)", (username,)).fetchone()
-    if not row:
-        return error("This account is not fully configured. Please contact support.", 409)
+        if not row["password_hash"] or not password_ok(password, row["password_hash"]):
+            return error("Username or password is incorrect.", 401)
+        try:
+            supabase_request("admin/users", {
+                "email": auth_email(username),
+                "password": password,
+                "email_confirm": True,
+                "user_metadata": {"username": username, "role": row["role"], "location": row["location"]},
+            }, admin=True)
+            g.db.execute("UPDATE house_assist.users SET password_hash=NULL WHERE id=?", (row["id"],))
+            g.db.commit()
+        except (ValueError, RuntimeError) as exc:
+            g.db.rollback()
+            return error(str(exc), 503)
     if role != row["role"]:
         return error("That account uses a different sign-in option.", 403)
     token = token_for(row["role"], row["id"])
