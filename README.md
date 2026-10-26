@@ -36,6 +36,16 @@ Authentication uses Supabase Auth for passwords and the private `house_assist` s
 
 Google OAuth configuration is managed in Supabase and Google Cloud; never put the Google client secret in the repository or browser code.
 
+If Google returns `server_error`, `unexpected_failure`, or `Unable to exchange external code`, the failure is in the provider configuration before the application callback runs. Verify that:
+
+- The Google OAuth client is a **Web application** client.
+- Its authorized redirect URI is exactly `https://svhccqudltmkeninethu.supabase.co/auth/v1/callback`.
+- The Google client ID and client secret in Supabase exactly match that same Google client.
+- The Supabase Site URL and redirect allow-list contain `https://house-assist-omega.vercel.app` with no trailing path or query string.
+- If the Google OAuth app is in testing mode, the signing-in Google account is listed as a test user.
+
+After changing the provider credentials, retry in a private browser window so an old Google authorization code is not reused.
+
 ## Deploy to Vercel
 
 The static frontend is served by Vercel and the Flask API is exposed as the Python function in [`api/index.py`](api/index.py). In the Vercel project settings, add these environment variables:
