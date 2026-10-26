@@ -20,6 +20,8 @@ Open <http://127.0.0.1:5000>. Keep the database connection string and admin PIN 
 
 The API stores accounts, helper listings, sessions, hires, payment confirmations, ratings, profile preferences, and branding in Supabase. Payment confirmations are self-reported; this app does not process payments.
 
+Authentication uses Supabase Auth for passwords and the private `house_assist` schema for application profiles and roles. Run the updated schema after pulling changes. Accounts created before this authentication change are legacy records and must be recreated or have their password reset before they can use Supabase Auth.
+
 ## Deploy to Vercel
 
 The static frontend is served by Vercel and the Flask API is exposed as the Python function in [`api/index.py`](api/index.py). In the Vercel project settings, add these environment variables:
