@@ -47,15 +47,27 @@
   }
 
   async function finishGoogleSignIn() {
-    const oauthCallback = window.location.search.includes('code=') || window.location.hash.includes('access_token');
+    const callbackUrl = new URL(window.location.href);
+    const callbackCode = callbackUrl.searchParams.get('code');
+    const oauthCallback = Boolean(callbackCode || callbackUrl.hash.includes('access_token'));
     if (!window.supabase && !oauthCallback) return;
     const config = await request('/auth/config');
     if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
     supabaseClient = window.supabase.createClient(config.url, config.publishable_key);
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) return;
+    let session;
+    if (callbackCode) {
+      const { data, error } = await supabaseClient.auth.exchangeCodeForSession(callbackCode);
+      if (error) throw error;
+      session = data.session;
+    } else {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) throw error;
+      session = data.session;
+    }
+    if (!session) throw new Error('Google sign-in did not complete. Please try again.');
     const details = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
     sessionStorage.removeItem(GOOGLE_PENDING_KEY);
+    window.history.replaceState({}, document.title, window.location.pathname);
     const result = await request('/auth/google', {
       method: 'POST',
       headers: { Authorization: `Bearer ${session.access_token}` },
@@ -243,6 +255,7 @@
 
   (async () => {
     await Promise.all([refreshHelpers(), refreshGuide()]);
+    const oauthCallback = window.location.search.includes('code=') || window.location.hash.includes('access_token');
     try {
       await finishGoogleSignIn();
       if (token) {
@@ -257,6 +270,13 @@
       if (THEMES[S.theme]) setTheme(THEMES[S.theme]);
       (user.colors || []).forEach((value, i) => document.documentElement.style.setProperty(['--bg', '--sf', '--ink', '--ac'][i], value));
       document.body.classList.toggle('dense', S.dense); go('home');
-    } catch (err) { storeToken(''); }
+    } catch (err) {
+      storeToken('');
+      if (oauthCallback) {
+        const pending = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
+        showAuth(pending.role ? 'signup' : 'login', pending.role || 'customer');
+        reportError($('#aErr'), err);
+      }
+    }
   })();
 })();
