@@ -82,7 +82,7 @@
       window.history.replaceState({}, document.title, window.location.pathname);
       throw new Error('Google sign-in was rejected by Supabase: ' + callbackError.replace(/\+/g, ' '));
     }
-    if (!window.supabase && !oauthCallback) return;
+    if (!oauthCallback) return;
     if (oauthCallback) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
