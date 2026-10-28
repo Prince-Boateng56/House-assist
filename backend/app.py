@@ -708,13 +708,115 @@ def admin_summary():
     _admin, problem = auth_required("admin")
     if problem:
         return problem
-    users = [dict(row) for row in g.db.execute("SELECT username,role,created_at FROM house_assist.users ORDER BY created_at DESC LIMIT 100")]
+    users = [dict(row) for row in g.db.execute("SELECT username,role,location,created_at FROM house_assist.users ORDER BY created_at DESC LIMIT 8")]
     brand_row = g.db.execute("SELECT value FROM house_assist.settings WHERE key='branding'").fetchone()
     brand = json.loads(brand_row["value"]) if brand_row else {"name": "House Assist", "mark": "⌂", "favicon": "🏠"}
     hires = g.db.execute("SELECT COUNT(*) AS count FROM house_assist.hires").fetchone()["count"]
-    return jsonify({"hires": hires, "helpers": g.db.execute("SELECT COUNT(*) AS count FROM house_assist.helpers").fetchone()["count"],
+    pending = g.db.execute("SELECT COUNT(*) AS count FROM house_assist.hires WHERE NOT helper_received").fetchone()["count"]
+    completed = g.db.execute("SELECT COUNT(*) AS count FROM house_assist.hires WHERE helper_received").fetchone()["count"]
+    ratings = g.db.execute("SELECT COUNT(*) AS count,COALESCE(AVG(stars),0) AS average FROM house_assist.ratings WHERE stars IS NOT NULL").fetchone()
+    return jsonify({"hires": hires, "pending_hires": pending, "completed_hires": completed,
+                    "helpers": g.db.execute("SELECT COUNT(*) AS count FROM house_assist.helpers").fetchone()["count"],
                     "customers": g.db.execute("SELECT COUNT(*) AS count FROM house_assist.users WHERE role='customer'").fetchone()["count"],
+                    "ratings": ratings["count"], "average_rating": round(float(ratings["average"]), 2),
                     "users": users, "branding": brand})
+
+
+@app.get("/api/admin/users")
+def admin_list_users():
+    _admin, problem = auth_required("admin")
+    if problem:
+        return problem
+    query = str(request.args.get("q", "")).strip()[:100]
+    like = f"%{query}%"
+    rows = g.db.execute("""SELECT id,username,email,role,location,created_at
+                          FROM house_assist.users
+                          WHERE username ILIKE ? OR COALESCE(email,'') ILIKE ? OR location ILIKE ?
+                          ORDER BY created_at DESC LIMIT 200""", (like, like, like)).fetchall()
+    return jsonify([dict(row) for row in rows])
+
+
+@app.get("/api/admin/helpers")
+def admin_list_helpers():
+    _admin, problem = auth_required("admin")
+    if problem:
+        return problem
+    query = str(request.args.get("q", "")).strip()[:100]
+    like = f"%{query}%"
+    rows = g.db.execute("""SELECT h.id,h.user_id,h.name,h.location,h.services,h.price,h.phone,h.rating,h.rating_count,
+                                 u.email,u.created_at
+                          FROM house_assist.helpers h
+                          LEFT JOIN house_assist.users u ON u.id=h.user_id
+                          WHERE h.name ILIKE ? OR h.location ILIKE ? OR COALESCE(u.email,'') ILIKE ?
+                          ORDER BY h.name LIMIT 200""", (like, like, like)).fetchall()
+    return jsonify([{**dict(row), "services": json.loads(row["services"])} for row in rows])
+
+
+@app.patch("/api/admin/helpers/<int:helper_id>")
+def admin_update_helper(helper_id: int):
+    _admin, problem = auth_required("admin")
+    if problem:
+        return problem
+    data = body()
+    current = g.db.execute("SELECT * FROM house_assist.helpers WHERE id=?", (helper_id,)).fetchone()
+    if not current:
+        return error("House help listing was not found.", 404)
+    name = str(data.get("name", current["name"])).strip()[:80]
+    location = str(data.get("location", current["location"])).strip()[:120]
+    phone = str(data.get("phone", current["phone"])).strip()[:40]
+    price = data.get("price", current["price"])
+    services = data.get("services", json.loads(current["services"]))
+    if len(name) < 2 or not location:
+        return error("Enter a name and location for this listing.")
+    if isinstance(price, bool) or not isinstance(price, int) or price < 1:
+        return error("Daily price must be a positive whole number.")
+    if not isinstance(services, list) or not services or any(not isinstance(service, str) or service not in SERVICES for service in services):
+        return error("Choose at least one valid service.")
+    try:
+        g.db.execute("UPDATE house_assist.helpers SET name=?,location=?,phone=?,price=?,services=? WHERE id=?",
+                     (name, location, phone, price, json.dumps(list(dict.fromkeys(services))), helper_id))
+        if current["user_id"]:
+            g.db.execute("UPDATE house_assist.users SET username=?,location=? WHERE id=?",
+                         (name, location, current["user_id"]))
+        g.db.commit()
+    except pg_errors.UniqueViolation as exc:
+        g.db.rollback()
+        return unique_conflict(exc)
+    return jsonify({"ok": True})
+
+
+@app.get("/api/admin/hires")
+def admin_list_hires():
+    _admin, problem = auth_required("admin")
+    if problem:
+        return problem
+    query = str(request.args.get("q", "")).strip()[:100]
+    like = f"%{query}%"
+    rows = g.db.execute("""SELECT h.id,h.payment_method,h.payment_detail,h.customer_paid,h.helper_received,h.created_at,
+                                 c.username AS customer_name,c.email AS customer_email,
+                                 p.name AS helper_name,p.location AS helper_location,p.price,
+                                 r.stars,r.recommendation
+                          FROM house_assist.hires h
+                          JOIN house_assist.users c ON c.id=h.customer_id
+                          JOIN house_assist.helpers p ON p.id=h.helper_id
+                          LEFT JOIN house_assist.ratings r ON r.hire_id=h.id
+                          WHERE c.username ILIKE ? OR COALESCE(c.email,'') ILIKE ? OR p.name ILIKE ?
+                          ORDER BY h.created_at DESC LIMIT 200""", (like, like, like)).fetchall()
+    return jsonify([dict(row) for row in rows])
+
+
+@app.get("/api/admin/ratings")
+def admin_list_ratings():
+    _admin, problem = auth_required("admin")
+    if problem:
+        return problem
+    rows = g.db.execute("""SELECT r.id,r.hire_id,r.stars,r.recommendation,r.created_at,
+                                 c.username AS customer_name,p.name AS helper_name
+                          FROM house_assist.ratings r
+                          JOIN house_assist.users c ON c.id=r.customer_id
+                          JOIN house_assist.helpers p ON p.id=r.helper_id
+                          ORDER BY r.created_at DESC LIMIT 200""").fetchall()
+    return jsonify([dict(row) for row in rows])
 
 
 @app.post("/api/admin/users")

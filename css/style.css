@@ -2499,8 +2499,44 @@ input[type=color] {
   gap: 16px;
   margin-bottom: 24px;
 }
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 22px;
+}
+.admin-nav .btn { width: auto; }
+.admin-section { display: grid; gap: 18px; }
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(140px,1fr));
+  gap: 12px;
+}
+.admin-stats .card { display: flex; flex-direction: column; gap: 5px; }
+.admin-table-wrap { width: 100%; overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.admin-table th,.admin-table td { padding: 12px 10px; border-bottom: 1px solid var(--ln); text-align: left; vertical-align: top; }
+.admin-table th { color: var(--mut); font-size: 13px; }
+.admin-toolbar,.admin-record-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.admin-search { display: flex; align-items: center; gap: 8px; width: min(480px,100%); }
+.admin-search input { flex: 1; min-width: 120px; }
+.admin-search .btn { width: auto; }
+.admin-record-list { display: grid; gap: 14px; margin-top: 16px; }
+.admin-record-card,.admin-feedback { border: 1px solid var(--ln); border-radius: 14px; padding: 16px; }
+.admin-record-card h3,.admin-toolbar h3 { margin: 0 0 5px; }
+.admin-form-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); align-items: end; gap: 12px; margin-top: 14px; }
+.admin-form-row .btn { width: auto; }
+.admin-services { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 14px 0 0; padding: 12px; border: 1px solid var(--ln); border-radius: 10px; }
+.admin-services legend { padding: 0 6px; color: var(--mut); }
+.admin-services label { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.admin-services input { width: auto; margin: 0; }
+.admin-add-user { margin-top: 18px; }
+.admin-feedback p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-settings-grid { grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); }
 @media (max-width: 600px) {
   .admin-wrap { padding: 28px 16px; }
   #adminArea>header { padding-inline: 16px; }
   .admin-heading h1 { font-size: 24px; }
+  .admin-toolbar,.admin-record-heading { align-items: stretch; flex-direction: column; }
+  .admin-search { width: 100%; }
 }
