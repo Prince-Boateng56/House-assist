@@ -13,11 +13,16 @@
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
     if (token) headers.Authorization = `Bearer ${token}`;
     const response = await fetch(API + path, { ...options, headers });
-    const value = response.status === 204 ? null : await response.json();
+    let value = null;
+    if (response.status !== 204) {
+      try { value = await response.json(); }
+      catch { value = { error: `The server returned an invalid response (${response.status}).` }; }
+    }
     if (!response.ok) {
       const requestError = new Error(value?.error || 'The request could not be completed.');
       requestError.code = value?.code;
       requestError.email = value?.email;
+      requestError.status = response.status;
       throw requestError;
     }
     return value;
@@ -410,6 +415,8 @@
   const showAdminPanel = async () => {
     $('#adminLogin').classList.add('hide');
     $('#adminPanel').classList.remove('hide');
+    $('#adminPanelError').classList.add('hide');
+    $('#adminPanelErrorText').textContent = '';
     await admin();
   };
   if (isAdminPath) {
@@ -439,6 +446,7 @@
       $('#adminPassword').value = '';
       $('#adminPassword').focus();
     };
+    $('#retryAdminLoad').onclick = admin;
   }
   const adminRoot = () => isAdminPath ? $('#adminContent') : $('#view');
   admin = async function () {
@@ -448,10 +456,21 @@
     }
     try {
       const data = await request('/admin/summary');
+      $('#adminPanelError').classList.add('hide');
+      $('#adminPanelErrorText').textContent = '';
       H(adminRoot(), `<h2>Admin centre</h2><p class="sub">Monitor registrations, hires and the platform brand.</p><div class="stats"><div class="card"><span class="price">${data.hires}</span><span class="mut">Hires recorded</span></div><div class="card"><span class="price">${data.helpers}</span><span class="mut">House helps</span></div><div class="card"><span class="price">${data.customers}</span><span class="mut">Customers</span></div></div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"><div class="card"><h3>Recent registrations</h3>${data.users.map(u => `<div class="step"><span class="dot ok">!</span>${u.username} · ${u.role}</div>`).join('') || '<p class="mut">No registrations yet.</p>'}<h3 style="margin-top:16px">Add a user</h3><input id="nu" placeholder="Username"><input id="np" type="password" placeholder="Temporary password (6+ characters)"><button class="btn" id="au">Add user</button></div><div class="card"><h3>Branding</h3><label>Site name<input id="sn" value="${data.branding.name}"></label><label>Logo letter or emoji<input id="lg" value="${data.branding.mark}" maxlength="2"></label><label>Favicon emoji<input id="fv" value="${data.branding.favicon}" maxlength="2"></label><button class="btn" id="sv2">Apply branding</button></div></div>`);
       $('#au').onclick = async () => { try { await request('/admin/users', { method: 'POST', body: JSON.stringify({ username: $('#nu').value, password: $('#np').value }) }); toast('User added'); admin(); } catch (err) { showError(err); } };
       $('#sv2').onclick = async () => { try { const brand = await request('/admin/branding', { method: 'PATCH', body: JSON.stringify({ name: $('#sn').value, mark: $('#lg').value, favicon: $('#fv').value }) }); applyBranding(brand); toast('Branding saved'); } catch (err) { showError(err); } };
-    } catch (err) { showError(err); }
+    } catch (err) {
+      $('#adminPanelErrorText').textContent = err.message || 'The administrator dashboard could not be loaded.';
+      $('#adminPanelError').classList.remove('hide');
+      if (err.status === 401 || err.status === 403) {
+        storeToken('');
+        $('#adminPanel').classList.add('hide');
+        $('#adminLogin').classList.remove('hide');
+        $('#adminLoginError').textContent = 'Your admin session was rejected. Enter the password again.';
+      }
+    }
   };
 
   (async () => {

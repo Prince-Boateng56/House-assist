@@ -2479,6 +2479,19 @@ input[type=color] {
 .admin-login form { margin-top: 24px; }
 .admin-login form .btn { width: 100%; }
 .admin-error { min-height: 24px; margin: 10px 0 0; color: #FF8A80; }
+.admin-panel-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid #ff8a8055;
+  border-radius: 12px;
+  background: #ff8a8012;
+  color: #FFB2AA;
+}
+.admin-panel-error .btn { flex: 0 0 auto; }
 .admin-heading {
   display: flex;
   justify-content: space-between;
