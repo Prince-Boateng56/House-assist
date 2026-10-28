@@ -22,6 +22,7 @@
   const GOOGLE_PENDING_KEY = 'house-assist-google-pending';
   let supabaseClient;
   let googleSession;
+  let googleSignupDetails = null;
 
   const createSupabaseClient = config => window.supabase.createClient(config.url, config.publishable_key, {
     auth: {
@@ -49,6 +50,9 @@
     $('#googleAuth').textContent = 'Continue with Google';
     const signup = S.mode === 'signup';
     if (signup && !details.location) return reportError($('#aErr'), new Error('Select your region before continuing with Google.'));
+    if (signup && S.role === 'helper' && (!details.services.length || !Number.isFinite(details.price) || details.price < 1)) {
+      return reportError($('#aErr'), new Error('Choose your services and add your daily price before continuing with Google.'));
+    }
     try {
       const config = await request('/auth/config');
       if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
@@ -63,25 +67,40 @@
   }
 
   async function completeGoogleProfile() {
-    const details = googleDetails();
-    if (!details.username) return reportError($('#aErr'), new Error('Enter a username to finish your Google signup.'));
-    if (!details.location) return reportError($('#aErr'), new Error('Select your region before continuing.'));
-    if (S.role === 'helper' && (!details.services.length || details.price < 1)) {
-      return reportError($('#aErr'), new Error('Choose your services and add your daily price before continuing.'));
+    const username = $('#googleUsername').value.trim();
+    if (!username) return reportError($('#googleProfileErr'), new Error('Enter a username to continue.'));
+    if (username.length < 2 || username.length > 40) {
+      return reportError($('#googleProfileErr'), new Error('Username must be between 2 and 40 characters.'));
+    }
+    if (!googleSignupDetails || !googleSession) {
+      return reportError($('#googleProfileErr'), new Error('Your Google verification session expired. Please start again.'));
     }
     try {
       const result = await request('/auth/google', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + googleSession },
-        body: JSON.stringify(details),
+        body: JSON.stringify({ ...googleSignupDetails, username }),
       });
       googleSession = null;
+      googleSignupDetails = null;
       sessionStorage.removeItem(GOOGLE_PENDING_KEY);
       storeToken(result.token);
       applyUser(result.user);
       await refreshHelpers();
       go('home');
-    } catch (err) { reportError($('#aErr'), err); }
+    } catch (err) { reportError($('#googleProfileErr'), err); }
+  }
+
+  function showGoogleProfile(details) {
+    googleSignupDetails = { ...details, username: '', mode: 'signup' };
+    S.role = details.role === 'helper' ? 'helper' : 'customer';
+    $('#land').classList.add('hide');
+    $('#learn').classList.add('hide');
+    $('#auth').classList.add('hide');
+    $('#googleProfilePage').classList.remove('hide');
+    $('#googleUsername').value = '';
+    $('#googleProfileErr').textContent = '';
+    $('#googleUsername').focus();
   }
 
   async function finishGoogleSignIn() {
@@ -139,18 +158,7 @@
       if (details.mode === 'login') {
         throw new Error('No House Assist account exists for this Google account. Sign up first.');
       }
-      showAuth('signup', details.role || 'customer');
-      $('#u').value = '';
-      $('#em').value = err.email || session.user.email || '';
-      $('#em').readOnly = true;
-      $('#loc').value = details.location || '';
-      $('#loc + .dd button').textContent = details.location || 'Select your region';
-      document.querySelectorAll('#svcBox input').forEach(input => {
-        input.checked = details.services?.includes(input.value) || false;
-      });
-      $('#pr').value = details.price || '';
-      $('#googleAuth').textContent = 'Complete Google signup';
-      $('#aErr').textContent = `Google verified ${err.email || session.user.email}. Choose a username to finish creating your account.`;
+      showGoogleProfile(details);
       return true;
     }
     sessionStorage.removeItem(GOOGLE_PENDING_KEY);
@@ -162,6 +170,7 @@
   }
 
   $('#googleAuth').onclick = continueWithGoogle;
+  $('#googleContinue').onclick = completeGoogleProfile;
 
   async function refreshHelpers() {
     try { helpers = await request('/helpers'); }
@@ -178,7 +187,7 @@
     S.user = { id: user.id, name: user.name, loc: user.loc };
     S.role = user.role;
     $('#who').textContent = `${user.name} · ${user.role === 'helper' ? 'House help' : 'Customer'}`;
-    $('#auth').classList.add('hide'); $('#land').classList.add('hide'); $('#app').classList.remove('hide');
+    $('#auth').classList.add('hide'); $('#googleProfilePage').classList.add('hide'); $('#land').classList.add('hide'); $('#app').classList.remove('hide');
   };
   const applyBranding = brand => {
     if (!brand) return;

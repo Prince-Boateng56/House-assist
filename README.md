@@ -22,7 +22,7 @@ The API stores accounts, helper listings, sessions, hires, payment confirmations
 
 Authentication uses Supabase Auth for passwords and the private `house_assist` schema for application profiles and roles. Run the updated schema after pulling changes. Accounts created before this authentication change are legacy records and must be recreated or have their password reset before they can use Supabase Auth.
 
-Password accounts require a valid email address, username, password and role-specific profile details. The real email is stored in Supabase Auth and in `house_assist.users`; login requires both the username and the matching email. For Google signup or sign-in, the selected region is the only information required before pressing the Google button. Google accounts use the email returned by Google; new Google users choose their House Assist username and any remaining role-specific profile details after Google authentication.
+Password accounts require a valid email address, username, password and role-specific profile details. The real email is stored in Supabase Auth and in `house_assist.users`; login requires both the username and the matching email. For Google signup or sign-in, customers select their region before pressing the Google button. House helps select their region, services and daily price. After Google verification, new users see a separate username-only page; pressing Continue creates their account and opens the dashboard for their selected role.
 
 ### Enable Google sign-in
 
@@ -37,7 +37,7 @@ Password accounts require a valid email address, username, password and role-spe
    - `http://localhost:5000`
    - `http://127.0.0.1:5000`
    Add the exact origin of any custom or Vercel preview domain you use. Supabase only returns to URLs in this allow-list; an unlisted `redirectTo` can fall back to the Site URL.
-6. Deploy the application. The auth screen’s **Continue with Google** button preserves the selected customer/helper role and collects the required profile details for new accounts.
+6. Deploy the application. The Google flow preserves the selected role and profile details, then asks new users only for a username after Google verification.
 
 Google OAuth configuration is managed in Supabase and Google Cloud; never put the Google client secret in the repository or browser code.
 
