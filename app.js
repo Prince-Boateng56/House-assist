@@ -479,33 +479,44 @@
   const adminEscape = value => { const node = document.createElement('span'); node.textContent = value == null ? '' : String(value); return node.innerHTML; };
   const adminDate = value => value ? new Date(Number(value) * 1000).toLocaleString() : '—';
   const adminSections = [['overview','Overview'],['users','Accounts'],['helpers','House helps'],['hires','Hires'],['ratings','Feedback'],['settings','Settings']];
+  const adminRequest = async (path, options = {}) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try { return await request(path, { ...options, signal: controller.signal }); }
+    catch (err) {
+      if (err.name === 'AbortError') throw new Error('The admin API did not respond within 15 seconds. Check the server connection, then retry.');
+      throw err;
+    } finally { clearTimeout(timer); }
+  };
   const renderAdminSection = async section => {
     adminSection = section;
     const root = adminRoot();
     const nav = `<h2>Admin centre</h2><p class="sub">Manage House Assist accounts, listings, hires, feedback, and site settings.</p><nav class="admin-nav" aria-label="Admin sections">${adminSections.map(([key,label]) => `<button type="button" class="btn ${section === key ? '' : 'alt'}" data-admin-section="${key}">${label}</button>`).join('')}</nav>`;
+    H(root, `${nav}<section class="card admin-loading"><span class="price">Loading ${adminEscape(adminSections.find(([key]) => key === section)?.[1] || 'dashboard')}…</span><p class="mut">Connecting to House Assist data.</p></section>`);
+    root.querySelectorAll('[data-admin-section]').forEach(b => b.onclick = () => renderAdminSection(b.dataset.adminSection));
     try {
       let content = '';
       if (section === 'overview') {
-        const d = await request('/admin/summary');
+        const d = await adminRequest('/admin/summary');
         content = `<div class="admin-stats">${[['customers','Customers'],['helpers','House helps'],['hires','Total hires'],['pending_hires','Open hires'],['completed_hires','Completed hires'],['average_rating','Average rating']].map(([key,label]) => `<article class="card"><span class="price">${d[key]}</span><span class="mut">${label}${key==='average_rating'?` (${d.ratings} ratings)`:''}</span></article>`).join('')}</div><div class="card"><h3>Latest account registrations</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Name</th><th>Type</th><th>Location</th><th>Joined</th></tr></thead><tbody>${d.users.map(u => `<tr><td>${adminEscape(u.username)}</td><td>${adminEscape(u.role)}</td><td>${adminEscape(u.location)}</td><td>${adminDate(u.created_at)}</td></tr>`).join('')||'<tr><td colspan="4">No accounts yet.</td></tr>'}</tbody></table></div></div>`;
       } else if (section === 'users') {
         const q = root.querySelector('#adminSearch')?.value || '';
-        const rows = await request(`/admin/users?q=${encodeURIComponent(q)}`);
+        const rows = await adminRequest(`/admin/users?q=${encodeURIComponent(q)}`);
         content = `<div class="card"><div class="admin-toolbar"><div><h3>Accounts</h3><p class="mut">Customers and house helps registered on House Assist.</p></div><form id="adminSearchForm" class="admin-search"><input id="adminSearch" placeholder="Search name, email, or location" value="${adminEscape(q)}"><button class="btn alt" type="button">Search</button></form></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Location</th><th>Joined</th></tr></thead><tbody>${rows.map(u => `<tr><td>${adminEscape(u.username)}</td><td>${adminEscape(u.email||'—')}</td><td>${adminEscape(u.role)}</td><td>${adminEscape(u.location)}</td><td>${adminDate(u.created_at)}</td></tr>`).join('')||'<tr><td colspan="5">No matching accounts.</td></tr>'}</tbody></table></div></div><div class="card admin-add-user"><h3>Create a customer account</h3><p class="mut">Creates an account through Supabase Auth. Share the temporary password securely.</p><div class="admin-form-row"><label>Username<input id="nu" placeholder="Customer username"></label><label>Temporary password<input id="np" type="password" minlength="6" placeholder="At least 6 characters"></label><button class="btn" id="au" type="button">Create account</button></div></div>`;
       } else if (section === 'helpers') {
         const q = root.querySelector('#adminSearch')?.value || '';
-        const rows = await request(`/admin/helpers?q=${encodeURIComponent(q)}`);
+        const rows = await adminRequest(`/admin/helpers?q=${encodeURIComponent(q)}`);
         const services = ['House Cleaning','Plumbing','Electrical','Mason','Painting','Repairs','Gardening','Lawn Care','Laundry','Ironing','Cooking','Kitchen Assist','Moving','Packing','Elderly Care','Child Care'];
         content = `<div class="card"><div class="admin-toolbar"><div><h3>House help listings</h3><p class="mut">Edit listing details customers see when choosing a helper.</p></div><form id="adminSearchForm" class="admin-search"><input id="adminSearch" placeholder="Search name, email, or location" value="${adminEscape(q)}"><button class="btn alt" type="button">Search</button></form></div><div class="admin-record-list">${rows.map(h => `<form class="admin-record-card" data-helper-id="${h.id}"><div class="admin-record-heading"><div><h3>${adminEscape(h.name)}</h3><span class="mut">${adminEscape(h.email||'No email linked')} · ${Number(h.rating||0).toFixed(1)} stars (${h.rating_count} ratings)</span></div><button class="btn" type="button">Save listing</button></div><div class="admin-form-row"><label>Name<input name="name" value="${adminEscape(h.name)}" required maxlength="80"></label><label>Location<input name="location" value="${adminEscape(h.location)}" required maxlength="120"></label><label>Daily price (GH₵)<input name="price" type="number" min="1" step="1" value="${h.price}" required></label><label>Phone<input name="phone" value="${adminEscape(h.phone)}" maxlength="40"></label></div><fieldset class="admin-services"><legend>Services</legend>${services.map(s => `<label><input type="checkbox" name="services" value="${adminEscape(s)}" ${h.services.includes(s)?'checked':''}>${adminEscape(s)}</label>`).join('')}</fieldset></form>`).join('')||'<p class="mut">No matching listings.</p>'}</div></div>`;
       } else if (section === 'hires') {
         const q = root.querySelector('#adminSearch')?.value || '';
-        const rows = await request(`/admin/hires?q=${encodeURIComponent(q)}`);
+        const rows = await adminRequest(`/admin/hires?q=${encodeURIComponent(q)}`);
         content = `<div class="card"><div class="admin-toolbar"><div><h3>Hire activity</h3><p class="mut">Track payment and service confirmation. Payment details are hidden for privacy.</p></div><form id="adminSearchForm" class="admin-search"><input id="adminSearch" placeholder="Search customer or house help" value="${adminEscape(q)}"><button class="btn alt" type="button">Search</button></form></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Hire</th><th>Customer</th><th>House help</th><th>Method</th><th>Status</th><th>Created</th></tr></thead><tbody>${rows.map(h => `<tr><td>#${h.id}</td><td>${adminEscape(h.customer_name)}<br><span class="mut">${adminEscape(h.customer_email||'')}</span></td><td>${adminEscape(h.helper_name)}<br><span class="mut">${adminEscape(h.helper_location)} · GH₵ ${h.price}/day</span></td><td>${adminEscape(h.payment_method)}</td><td>${!h.customer_paid?'Awaiting customer confirmation':!h.helper_received?'Awaiting helper confirmation':'Completed'}</td><td>${adminDate(h.created_at)}</td></tr>`).join('')||'<tr><td colspan="6">No matching hires.</td></tr>'}</tbody></table></div></div>`;
       } else if (section === 'ratings') {
-        const rows = await request('/admin/ratings');
+        const rows = await adminRequest('/admin/ratings');
         content = `<div class="card"><h3>Customer feedback</h3><p class="mut">Feedback stays linked to its completed hire record.</p><div class="admin-record-list">${rows.map(r => `<article class="admin-feedback"><div class="admin-record-heading"><div><strong>${adminEscape(r.customer_name)}</strong><span class="mut"> reviewed ${adminEscape(r.helper_name)} · hire #${r.hire_id}</span></div><span>${r.stars?`${r.stars} / 5`:'Written feedback'}</span></div><p>${adminEscape(r.recommendation||'No written recommendation.')}</p><span class="mut">${adminDate(r.created_at)}</span></article>`).join('')||'<p class="mut">No feedback has been submitted.</p>'}</div></div>`;
       } else {
-        const d = await request('/admin/summary');
+        const d = await adminRequest('/admin/summary');
         content = `<div class="grid admin-settings-grid"><div class="card"><h3>Site branding</h3><p class="mut">These values appear on the site and its page icon.</p><label>Site name<input id="sn" value="${adminEscape(d.branding.name)}" maxlength="60"></label><label>Logo letter or emoji<input id="lg" value="${adminEscape(d.branding.mark)}" maxlength="2"></label><label>Favicon emoji<input id="fv" value="${adminEscape(d.branding.favicon)}" maxlength="2"></label><button class="btn" id="sv2" type="button">Save branding</button></div><div class="card"><h3>Admin session</h3><p class="mut">The server password protects this session, which expires after one hour.</p><button class="btn alt" id="adminLogoutSettings" type="button">Log out</button></div></div>`;
       }
       H(root, `${nav}<section class="admin-section">${content}</section>`);
@@ -519,7 +530,13 @@
         root.querySelector('#adminLogoutSettings').onclick = () => $('#adminLogout').click();
       }
     } catch(err) {
-      if (err.status===401||err.status===403) throw err;
+      if (err.status===401||err.status===403) {
+        storeToken('');
+        $('#adminPanel').classList.add('hide');
+        $('#adminLogin').classList.remove('hide');
+        $('#adminLoginError').textContent='Your admin session was rejected. Enter the password again.';
+        return;
+      }
       H(root,`${nav}<section class="card"><h3>Could not load this section</h3><p class="mut">${adminEscape(err.message||'Please try again.')}</p><button class="btn" id="adminSectionRetry" type="button">Retry</button></section>`);
       root.querySelectorAll('[data-admin-section]').forEach(b=>b.onclick=()=>renderAdminSection(b.dataset.adminSection));
       root.querySelector('#adminSectionRetry').onclick=()=>renderAdminSection(section);
@@ -527,18 +544,11 @@
   };
   admin = async function() {
     if (!isAdminPath) { window.location.assign('/admin.'); return; }
-    try {
-      await request('/admin/summary');
-      $('#adminPanelError').classList.add('hide');
-      $('#adminPanelErrorText').textContent='';
-      H(adminRoot(),`<h2>Admin centre</h2><p class="sub">Manage House Assist accounts, listings, hires, feedback, and site settings.</p>`);
-      await renderAdminSection(adminSection);
-    } catch(err) {
-      $('#adminPanelErrorText').textContent=err.message||'The administrator dashboard could not be loaded.';
-      $('#adminPanelError').classList.remove('hide');
-      if(err.status===401||err.status===403){storeToken('');$('#adminPanel').classList.add('hide');$('#adminLogin').classList.remove('hide');$('#adminLoginError').textContent='Your admin session was rejected. Enter the password again.';}
-    }
+    $('#adminPanelError').classList.add('hide');
+    $('#adminPanelErrorText').textContent='';
+    await renderAdminSection(adminSection);
   };
+  $('#retryAdminLoad').onclick = admin;
 
   (async () => {
     if (isAdminPath) {
