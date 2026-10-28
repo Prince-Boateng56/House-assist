@@ -413,7 +413,7 @@
     $('#adminPanel').classList.remove('hide');
     $('#adminPanelError').classList.add('hide');
     $('#adminPanelErrorText').textContent = '';
-    await admin();
+    await renderAdminSection(adminSection);
   };
   let adminLoginBusy = false;
   if (isAdminPath) {
