@@ -542,6 +542,10 @@
       root.querySelector('#adminSectionRetry').onclick=()=>renderAdminSection(section);
     }
   };
+  window.houseAssistRenderAdminSection = (section, sessionToken) => {
+    if (sessionToken) token = sessionToken;
+    return renderAdminSection(section);
+  };
   admin = async function() {
     if (!isAdminPath) { window.location.assign('/admin.'); return; }
     $('#adminPanelError').classList.add('hide');
