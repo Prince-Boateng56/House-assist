@@ -2,7 +2,13 @@
 (() => {
   const API = '/api';
   const TOKEN_KEY = 'house-assist-token';
-  let token = localStorage.getItem(TOKEN_KEY) || '';
+  const requestedPath = window.location.pathname.replace(/\/$/, '');
+  if (requestedPath === '/admin') {
+    window.location.replace('/admin.');
+    return;
+  }
+  const isAdminPath = requestedPath === '/admin.';
+  let token = isAdminPath ? '' : (localStorage.getItem(TOKEN_KEY) || '');
   const request = async (path, options = {}) => {
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -17,7 +23,11 @@
     return value;
   };
   const reportError = (element, err) => { if (element) element.textContent = err.message; else toast(err.message); };
-  const storeToken = value => { token = value || ''; if (token) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY); };
+  const storeToken = value => {
+    token = value || '';
+    if (isAdminPath) return;
+    if (token) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY);
+  };
   const showError = err => toast(err.message);
   const GOOGLE_PENDING_KEY = 'house-assist-google-pending';
   const RESET_PENDING_KEY = 'house-assist-password-reset-pending';
@@ -397,23 +407,62 @@
     $('#den').onclick = async e => { if (e.target.dataset.d) { S.dense = e.target.dataset.d === '1'; document.body.classList.toggle('dense', S.dense); profile(); try { await request('/me', { method: 'PATCH', body: JSON.stringify({ layout: S.lay, compact: S.dense }) }); } catch (err) { showError(err); } } };
   };
 
-  adminGate = function () {
-    modal(`<h3 style="font-size:24px">Restricted area</h3><p class="mut">Enter the administrator access code configured on the server.</p><input id="pin" type="password" inputmode="numeric" autocomplete="off"><button class="btn" id="ok" style="width:100%">Continue</button>`);
-    $('#ok').onclick = async () => {
-      try { const result = await request('/admin/session', { method: 'POST', body: JSON.stringify({ pin: $('#pin').value }) }); storeToken(result.token); modal(0); go('admin'); }
-      catch (err) { showError(err); }
-    };
+  const showAdminPanel = async () => {
+    $('#adminLogin').classList.add('hide');
+    $('#adminPanel').classList.remove('hide');
+    await admin();
   };
+  if (isAdminPath) {
+    $('#adminLoginForm').onsubmit = async event => {
+      event.preventDefault();
+      const button = $('#adminLoginButton');
+      const message = $('#adminLoginError');
+      message.textContent = '';
+      button.disabled = true;
+      try {
+        const result = await request('/admin/session', {
+          method: 'POST',
+          body: JSON.stringify({ pin: $('#adminPassword').value }),
+        });
+        storeToken(result.token);
+        await showAdminPanel();
+      } catch (err) {
+        message.textContent = err.message || 'Admin sign-in failed.';
+      } finally {
+        button.disabled = false;
+      }
+    };
+    $('#adminLogout').onclick = () => {
+      storeToken('');
+      $('#adminPanel').classList.add('hide');
+      $('#adminLogin').classList.remove('hide');
+      $('#adminPassword').value = '';
+      $('#adminPassword').focus();
+    };
+  }
+  const adminRoot = () => isAdminPath ? $('#adminContent') : $('#view');
   admin = async function () {
+    if (!isAdminPath) {
+      window.location.assign('/admin.');
+      return;
+    }
     try {
       const data = await request('/admin/summary');
-      H($('#view'), `<h2>Admin centre</h2><p class="sub">Monitor registrations, hires and the platform brand.</p><div class="stats"><div class="card"><span class="price">${data.hires}</span><span class="mut">Hires recorded</span></div><div class="card"><span class="price">${data.helpers}</span><span class="mut">House helps</span></div><div class="card"><span class="price">${data.customers}</span><span class="mut">Customers</span></div></div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"><div class="card"><h3>Recent registrations</h3>${data.users.map(u => `<div class="step"><span class="dot ok">!</span>${u.username} · ${u.role}</div>`).join('') || '<p class="mut">No registrations yet.</p>'}<h3 style="margin-top:16px">Add a user</h3><input id="nu" placeholder="Username"><input id="np" type="password" placeholder="Temporary password (6+ characters)"><button class="btn" id="au">Add user</button></div><div class="card"><h3>Branding</h3><label>Site name<input id="sn" value="${data.branding.name}"></label><label>Logo letter or emoji<input id="lg" value="${data.branding.mark}" maxlength="2"></label><label>Favicon emoji<input id="fv" value="${data.branding.favicon}" maxlength="2"></label><button class="btn" id="sv2">Apply branding</button></div></div>`);
+      H(adminRoot(), `<h2>Admin centre</h2><p class="sub">Monitor registrations, hires and the platform brand.</p><div class="stats"><div class="card"><span class="price">${data.hires}</span><span class="mut">Hires recorded</span></div><div class="card"><span class="price">${data.helpers}</span><span class="mut">House helps</span></div><div class="card"><span class="price">${data.customers}</span><span class="mut">Customers</span></div></div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"><div class="card"><h3>Recent registrations</h3>${data.users.map(u => `<div class="step"><span class="dot ok">!</span>${u.username} · ${u.role}</div>`).join('') || '<p class="mut">No registrations yet.</p>'}<h3 style="margin-top:16px">Add a user</h3><input id="nu" placeholder="Username"><input id="np" type="password" placeholder="Temporary password (6+ characters)"><button class="btn" id="au">Add user</button></div><div class="card"><h3>Branding</h3><label>Site name<input id="sn" value="${data.branding.name}"></label><label>Logo letter or emoji<input id="lg" value="${data.branding.mark}" maxlength="2"></label><label>Favicon emoji<input id="fv" value="${data.branding.favicon}" maxlength="2"></label><button class="btn" id="sv2">Apply branding</button></div></div>`);
       $('#au').onclick = async () => { try { await request('/admin/users', { method: 'POST', body: JSON.stringify({ username: $('#nu').value, password: $('#np').value }) }); toast('User added'); admin(); } catch (err) { showError(err); } };
       $('#sv2').onclick = async () => { try { const brand = await request('/admin/branding', { method: 'PATCH', body: JSON.stringify({ name: $('#sn').value, mark: $('#lg').value, favicon: $('#fv').value }) }); applyBranding(brand); toast('Branding saved'); } catch (err) { showError(err); } };
     } catch (err) { showError(err); }
   };
 
   (async () => {
+    if (isAdminPath) {
+      $('#land').classList.add('hide');
+      $('#learn').classList.add('hide');
+      $('#auth').classList.add('hide');
+      $('#app').classList.add('hide');
+      $('#adminArea').classList.remove('hide');
+      return;
+    }
     await Promise.all([refreshHelpers(), refreshGuide()]);
     const oauthCallback = window.location.search.includes('code=') ||
       window.location.search.includes('error=') ||

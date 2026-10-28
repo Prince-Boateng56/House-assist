@@ -74,12 +74,12 @@ function drawer(){
  const c=S.role=='customer',it=[['home',c?'Find a house help':'Other house helps'],...(c?[['guide','Price guide'],['hired','Hired before']]:[['guide','Price guide']]),['messages','Messages'],['profile','Profile & appearance']];
  H($('#drawer'),it.map(([k,t])=>`<a data-k="${k}" class="${S.view==k?'on':''}">${t}</a>`).join('')+
  (c?'':`<a class="sos" data-k="sos">Emergency</a>`)+
- `<a data-k="out" style="margin-top:6px">Log out</a><div class="policy">House Assist is not responsible for arrangements or transactions completed outside the platform. Please confirm payments and service details carefully. <a data-k="adm" style="display:inline;padding:0;font-weight:400;color:inherit">Read the full p</a><b>olicy</b></div>`);
+ `<a data-k="out" style="margin-top:6px">Log out</a><div class="policy">House Assist is not responsible for arrangements or transactions completed outside the platform. Please confirm payments and service details carefully.</div>`);
 }
 const open=o=>{$('#drawer').classList.toggle('open',o);$('#scrim').classList.toggle('hide',!o)};
 $('#bg').onclick=()=>open(true);$('#scrim').onclick=()=>open(false);
 $('#drawer').onclick=e=>{const k=e.target.closest('a')?.dataset.k;if(!k)return;open(false);
- if(k=='sos')return sos();if(k=='out')return location.reload();if(k=='adm')return adminGate();go(k)};
+ if(k=='sos')return sos();if(k=='out')return location.reload();go(k)};
 function go(v){S.view=v;drawer();({home,guide,hired,messages,profile,admin})[v]();scrollTo(0,0)}
 
 /* listings */

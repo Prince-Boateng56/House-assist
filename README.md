@@ -8,15 +8,15 @@ Open the Supabase project’s SQL Editor, paste in [`supabase/schema.sql`](supab
 
 ## Run locally
 
-The repository uses a local `.env` file for the private database connection string. It is ignored by Git. Install the requirements, then set a private admin PIN in PowerShell and start the server:
+The repository uses a local `.env` file for the private database connection string. It is ignored by Git. Install the requirements, set the admin password in the server environment, and start the server:
 
 ```powershell
 python -m pip install -r backend/requirements.txt
-$env:HOUSE_ASSIST_ADMIN_PIN = "choose-a-private-admin-code"
+$env:HOUSE_ASSIST_ADMIN_PIN = "choose-a-private-admin-password"
 python backend/app.py
 ```
 
-Open <http://127.0.0.1:5000>. Keep the database connection string and admin PIN on the server; never put them in browser code or commit them to the project. Run [`supabase/schema.sql`](supabase/schema.sql) once in the Supabase SQL Editor to create the tables.
+Open <http://127.0.0.1:5000>. Keep the database connection string on the server; never put it in browser code or commit it to the project. Run [`supabase/schema.sql`](supabase/schema.sql) once in the Supabase SQL Editor to create the tables.
 
 The API stores accounts, helper listings, sessions, hires, payment confirmations, ratings, profile preferences, and branding in Supabase. Payment confirmations are self-reported; this app does not process payments.
 
@@ -27,6 +27,10 @@ Password accounts require a valid full name, email, password and role-specific p
 ### Reset a password
 
 Manual sign-in users can select **Forgot password?** to request a recovery email for their account email. The recovery link returns to the app, where they choose and confirm a new password, then sign in with their usual username and email. The app redirects to its current origin, so add every production, preview, and local app URL to Supabase **Authentication â†’ URL Configuration â†’ Redirect URLs**. Configure a production SMTP provider in Supabase for reliable recovery email delivery.
+
+### Administrator access
+
+The administrator page is available at <https://house-assist-omega.vercel.app/admin.>. The app menu does not contain an administrator entry; the backend issues an admin session only after validating the password configured in the server environment.
 
 ### Enable Google sign-in
 
@@ -62,6 +66,6 @@ The static frontend is served by Vercel and the Flask API is exposed as the Pyth
 - `SUPABASE_DB_URL`
 - `HOUSE_ASSIST_ADMIN_PIN`
 
-Use the same Supabase connection string and admin PIN as the local deployment. Never commit `.env` or expose the database URL in browser code.
+Use the same Supabase connection string as the local deployment. Set `HOUSE_ASSIST_ADMIN_PIN` to the chosen admin password in Vercel's Environment Variables. Never commit `.env`, the admin password, or the database URL to the repository or expose them in browser code.
 
 Import the repository into Vercel and deploy from the repository root. After deployment, verify `https://your-domain.vercel.app/api/health`, then run [`supabase/schema.sql`](supabase/schema.sql) in Supabase if the tables are not already created.

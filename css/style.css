@@ -2456,3 +2456,38 @@ input[type=color] {
   #modal h3 { font-size: 20px !important; }
   .bub { font-size: 15px; }
 }
+
+#adminArea>header {
+  display: flex;
+  align-items: center;
+  min-height: 72px;
+  padding: 12px 28px;
+  border-bottom: 1px solid var(--ln);
+}
+#adminArea>header .logo { text-decoration: none; }
+.admin-wrap {
+  width: min(1120px,100%);
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+.admin-login {
+  width: min(440px,100%);
+  margin: 8vh auto 0;
+}
+.admin-login h1,
+.admin-heading h1 { font-size: 30px; }
+.admin-login form { margin-top: 24px; }
+.admin-login form .btn { width: 100%; }
+.admin-error { min-height: 24px; margin: 10px 0 0; color: #FF8A80; }
+.admin-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width: 600px) {
+  .admin-wrap { padding: 28px 16px; }
+  #adminArea>header { padding-inline: 16px; }
+  .admin-heading h1 { font-size: 24px; }
+}

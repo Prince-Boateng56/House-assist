@@ -263,10 +263,10 @@ def update_supabase_user(user_id: Any, payload: dict[str, Any]) -> None:
         raise ValueError(detail.get("msg") or detail.get("message") or "Supabase authentication update failed.") from exc
 
 
-def token_for(role: str, user_id: Any | None = None) -> str:
+def token_for(role: str, user_id: Any | None = None, *, ttl: int = TOKEN_TTL) -> str:
     token = secrets.token_urlsafe(32)
     g.db.execute("INSERT INTO house_assist.sessions(token_hash,user_id,role,expires_at) VALUES(?,?,?,?)",
-                 (hashlib.sha256(token.encode()).hexdigest(), user_id, role, int(time.time()) + TOKEN_TTL))
+                 (hashlib.sha256(token.encode()).hexdigest(), user_id, role, int(time.time()) + ttl))
     g.db.commit()
     return token
 
@@ -315,6 +315,13 @@ def helper_json(row):
 
 @app.get("/")
 def index():
+    return send_from_directory(ROOT, "index.html")
+
+
+@app.get("/admin")
+@app.get("/admin/")
+@app.get("/admin.")
+def admin_page():
     return send_from_directory(ROOT, "index.html")
 
 
@@ -693,7 +700,7 @@ def admin_login():
         return error("Admin access is not configured. Set HOUSE_ASSIST_ADMIN_PIN on the server.", 503)
     if not hmac.compare_digest(pin, expected):
         return error("Access code not recognised.", 401)
-    return jsonify({"token": token_for("admin")})
+    return jsonify({"token": token_for("admin", ttl=60 * 60)})
 
 
 @app.get("/api/admin/summary")
