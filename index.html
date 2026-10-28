@@ -80,7 +80,7 @@
   <h2 id="aT">Welcome back</h2><p class="gs" id="aS">Please enter your details to continue</p>
   <div class="seg" id="roleSeg"><button class="on" data-r="customer">I need help</button><button data-r="helper">I offer help</button></div>
   <div class="seg" id="modeSeg"><button class="on" data-m="login">Log in</button><button data-m="signup">Sign up</button></div>
-  <label>Username<input id="u" autocomplete="username" placeholder="e.g. akosua_m"></label>
+  <label><span id="usernameFieldLabel">Username</span><input id="u" autocomplete="username" placeholder="e.g. Akosua Mensah"></label>
   <label>Email<input id="em" type="email" autocomplete="email" placeholder="you@example.com"></label>
   <label id="locL" class="hide">Region<select id="loc"><option value="" disabled selected>Select your region</option><option>Ahafo</option><option>Ashanti</option><option>Bono</option><option>Bono East</option><option>Central</option><option>Eastern</option><option>Greater Accra</option><option>North East</option><option>Northern</option><option>Oti</option><option>Savannah</option><option>Upper East</option><option>Upper West</option><option>Volta</option><option>Western</option><option>Western North</option></select></label>
   <div id="svcL" class="hide"><label>Services you offer <span style="font-weight:400">(pick one or more)</span></label><div class="dd multi" id="svcBox"><button type="button" class="ph" aria-haspopup="listbox">Select services</button><ul><li><label><input type="checkbox" value="House Cleaning"><span>House Cleaning</span></label></li><li><label><input type="checkbox" value="Plumbing"><span>Plumbing</span></label></li><li><label><input type="checkbox" value="Electrical"><span>Electrical</span></label></li><li><label><input type="checkbox" value="Mason"><span>Mason</span></label></li><li><label><input type="checkbox" value="Painting"><span>Painting</span></label></li><li><label><input type="checkbox" value="Repairs"><span>Repairs</span></label></li><li><label><input type="checkbox" value="Gardening"><span>Gardening</span></label></li><li><label><input type="checkbox" value="Lawn Care"><span>Lawn Care</span></label></li><li><label><input type="checkbox" value="Laundry"><span>Laundry</span></label></li><li><label><input type="checkbox" value="Ironing"><span>Ironing</span></label></li><li><label><input type="checkbox" value="Cooking"><span>Cooking</span></label></li><li><label><input type="checkbox" value="Kitchen Assist"><span>Kitchen Assist</span></label></li><li><label><input type="checkbox" value="Moving"><span>Moving</span></label></li><li><label><input type="checkbox" value="Packing"><span>Packing</span></label></li><li><label><input type="checkbox" value="Elderly Care"><span>Elderly Care</span></label></li><li><label><input type="checkbox" value="Child Care"><span>Child Care</span></label></li></ul></div>
@@ -94,18 +94,6 @@
   <p class="swl" style="margin-top:8px"><a id="backHome">← Back to home</a></p>
  </div></div>
 </section>
-
-<div class="formside hide" id="googleProfilePage">
- <div class="glass" id="googleProfile">
-  <div class="logo"><span class="mark">⌂</span><span class="sn">House Assist</span></div>
-  <h2>Google verified</h2>
-  <p class="gs">Choose a username for your House Assist account.</p>
-  <label for="googleUsername">Username</label>
-  <input id="googleUsername" type="text" autocomplete="username" minlength="2" maxlength="40" placeholder="e.g. akosua_m">
-  <button class="btn" style="width:100%;margin-top:18px" id="googleContinue" type="button">Continue</button>
-  <p id="googleProfileErr" style="color:#FF8A80;min-height:20px;margin:8px 0 0;font-size:14px"></p>
- </div>
-</div>
 
 <div id="app" class="hide">
  <header><button class="burger" id="bg" aria-label="Open menu">☰</button><div class="logo"><span class="mark">⌂</span><span class="sn">House Assist</span></div><span class="sp"></span><span class="pill" id="who"></span></header>

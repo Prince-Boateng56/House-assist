@@ -11,6 +11,7 @@ import os
 import re
 import secrets
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -107,6 +108,70 @@ def password_ok(password: str, saved: str) -> bool:
 
 def valid_email(value: str) -> bool:
     return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value))
+
+
+def clean_google_name(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    cleaned = "".join(
+        char if unicodedata.category(char)[0] in {"L", "M"} or char in " '-." else " "
+        for char in value
+    )
+    return " ".join(cleaned.split())[:40].strip()
+
+
+def google_profile_name(google_user: dict[str, Any], email: str) -> str:
+    metadata = google_user.get("user_metadata") or {}
+    identities = google_user.get("identities") or []
+    profile_sources = [metadata] if isinstance(metadata, dict) else []
+    profile_sources.extend(
+        identity.get("identity_data") or {}
+        for identity in identities
+        if isinstance(identity, dict) and identity.get("provider") == "google"
+        and isinstance(identity.get("identity_data") or {}, dict)
+    )
+    for profile in profile_sources:
+        given = profile.get("given_name") or profile.get("first_name") or ""
+        family = profile.get("family_name") or profile.get("last_name") or ""
+        for value in (profile.get("full_name"), profile.get("name"), f"{given} {family}"):
+            name = clean_google_name(value)
+            if len(name) >= 2:
+                return name.title()
+
+    local_part = re.sub(r"\d+$", "", email.split("@", 1)[0])
+    words = [part for part in re.split(r"[._+\-]+", local_part) if part]
+    fallback = " ".join(part[:1].upper() + part[1:].lower() for part in words)
+    return clean_google_name(fallback) or "Google User"
+
+
+def unique_google_username(preferred: str, email: str) -> str:
+    base = preferred[:40].strip() or "Google User"
+
+    def is_taken(candidate: str) -> bool:
+        return g.db.execute(
+            "SELECT 1 FROM house_assist.users WHERE lower(username)=lower(?) LIMIT 1",
+            (candidate,),
+        ).fetchone() is not None
+
+    if not is_taken(base):
+        return base
+
+    def with_suffix(suffix: str) -> str:
+        prefix = base[:max(1, 39 - len(suffix))].rstrip()
+        return f"{prefix} {suffix}"[:40]
+
+    email_suffix = re.search(r"(\d+)$", email.split("@", 1)[0])
+    suffix = email_suffix.group(1) if email_suffix else "2"
+    candidate = with_suffix(suffix)
+    if not is_taken(candidate):
+        return candidate
+
+    for number in range(2, 1000):
+        suffix = str(number)
+        candidate = with_suffix(suffix)
+        if not is_taken(candidate):
+            return candidate
+    raise RuntimeError("Could not create a unique username for this Google account.")
 
 
 def auth_email(username: str) -> str:
@@ -371,18 +436,15 @@ def google_login():
     email = str(google_user.get("email", "")).strip().lower()
     if not valid_email(email):
         return error("Google did not provide a valid email address.", 401)
-    metadata = google_user.get("user_metadata") or {}
     row = g.db.execute("SELECT * FROM house_assist.users WHERE id=?", (user_id,)).fetchone()
     if not row:
         if data.get("mode") == "login":
             return error("No House Assist account exists for this Google account. Sign up first.", 404)
-        username = str(data.get("username", "")).strip()
+        username = unique_google_username(google_profile_name(google_user, email), email)
         role = data.get("role")
         location = str(data.get("location", "")).strip()
-        if not username:
-            return jsonify({"error": "Choose a username to finish your Google signup.", "code": "PROFILE_REQUIRED", "email": email}), 422
         if len(username) < 2 or len(username) > 40 or role not in ("customer", "helper") or not location:
-            return error("Complete your username, role and region before continuing with Google.", 422)
+            return error("Complete your role and region before continuing with Google.", 422)
         services = data.get("services") or []
         try:
             price = int(data.get("price", 0))

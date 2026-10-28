@@ -37,6 +37,7 @@ function authUI(){
  $('#locL').classList.toggle('hide',!su);$('#svcL').classList.toggle('hide',!(su&&S.role=='helper'));
  $('#go').textContent=su?'Create account':'Log in';$('#aT').textContent=su?'Join House Assist':'Welcome back';
  $('#aS').textContent=su?'Create your account to get started':'Please enter your details to continue';
+ $('#usernameFieldLabel').textContent=su?'Full name':'Username';$('#u').placeholder=su?'e.g. Akosua Mensah':'Enter your username';$('#u').autocomplete=su?'name':'username';
  $('#rmRow').classList.toggle('hide',su);
  $('#swL').innerHTML=su?'Already have an account? <a>Log in</a>':'Don’t have an account? <a>Sign up</a>';
 }

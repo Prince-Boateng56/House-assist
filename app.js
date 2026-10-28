@@ -21,8 +21,6 @@
   const showError = err => toast(err.message);
   const GOOGLE_PENDING_KEY = 'house-assist-google-pending';
   let supabaseClient;
-  let googleSession;
-  let googleSignupDetails = null;
 
   const createSupabaseClient = config => window.supabase.createClient(config.url, config.publishable_key, {
     auth: {
@@ -45,7 +43,6 @@
 
   async function continueWithGoogle() {
     const details = googleDetails();
-    if (googleSession) return completeGoogleProfile();
     $('#em').readOnly = false;
     $('#googleAuth').textContent = 'Continue with Google';
     const signup = S.mode === 'signup';
@@ -64,43 +61,6 @@
       });
       if (oauthError) throw oauthError;
     } catch (err) { reportError($('#aErr'), err); }
-  }
-
-  async function completeGoogleProfile() {
-    const username = $('#googleUsername').value.trim();
-    if (!username) return reportError($('#googleProfileErr'), new Error('Enter a username to continue.'));
-    if (username.length < 2 || username.length > 40) {
-      return reportError($('#googleProfileErr'), new Error('Username must be between 2 and 40 characters.'));
-    }
-    if (!googleSignupDetails || !googleSession) {
-      return reportError($('#googleProfileErr'), new Error('Your Google verification session expired. Please start again.'));
-    }
-    try {
-      const result = await request('/auth/google', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + googleSession },
-        body: JSON.stringify({ ...googleSignupDetails, username }),
-      });
-      googleSession = null;
-      googleSignupDetails = null;
-      sessionStorage.removeItem(GOOGLE_PENDING_KEY);
-      storeToken(result.token);
-      applyUser(result.user);
-      await refreshHelpers();
-      go('home');
-    } catch (err) { reportError($('#googleProfileErr'), err); }
-  }
-
-  function showGoogleProfile(details) {
-    googleSignupDetails = { ...details, username: '', mode: 'signup' };
-    S.role = details.role === 'helper' ? 'helper' : 'customer';
-    $('#land').classList.add('hide');
-    $('#learn').classList.add('hide');
-    $('#auth').classList.add('hide');
-    $('#googleProfilePage').classList.remove('hide');
-    $('#googleUsername').value = '';
-    $('#googleProfileErr').textContent = '';
-    $('#googleUsername').focus();
   }
 
   async function finishGoogleSignIn() {
@@ -145,22 +105,11 @@
     }
     if (!session) throw new Error('Google sign-in did not complete. Please try again.');
     const details = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
-    let result;
-    try {
-      result = await request('/auth/google', {
+    const result = await request('/auth/google', {
       method: 'POST',
       headers: { Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify(details),
-      });
-    } catch (err) {
-      if (err.code !== 'PROFILE_REQUIRED') throw err;
-      googleSession = session.access_token;
-      if (details.mode === 'login') {
-        throw new Error('No House Assist account exists for this Google account. Sign up first.');
-      }
-      showGoogleProfile(details);
-      return true;
-    }
+    });
     sessionStorage.removeItem(GOOGLE_PENDING_KEY);
     storeToken(result.token);
     applyUser(result.user);
@@ -170,7 +119,6 @@
   }
 
   $('#googleAuth').onclick = continueWithGoogle;
-  $('#googleContinue').onclick = completeGoogleProfile;
 
   async function refreshHelpers() {
     try { helpers = await request('/helpers'); }
@@ -187,7 +135,7 @@
     S.user = { id: user.id, name: user.name, loc: user.loc };
     S.role = user.role;
     $('#who').textContent = `${user.name} · ${user.role === 'helper' ? 'House help' : 'Customer'}`;
-    $('#auth').classList.add('hide'); $('#googleProfilePage').classList.add('hide'); $('#land').classList.add('hide'); $('#app').classList.remove('hide');
+    $('#auth').classList.add('hide'); $('#land').classList.add('hide'); $('#app').classList.remove('hide');
   };
   const applyBranding = brand => {
     if (!brand) return;

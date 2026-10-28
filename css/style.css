@@ -588,15 +588,6 @@ label {
   padding: 0;
   display: block;
 }
-#googleProfilePage {
-  min-height: 100vh;
-  color: #EAF1FF;
-  background: radial-gradient(60% 50% at 50% 42%,rgba(59,130,246,.16),transparent 70%);
-}
-#googleProfile .logo {
-  display: flex;
-  justify-content: center;
-}
 .glass {
   width: 100%;
   max-width: none;
