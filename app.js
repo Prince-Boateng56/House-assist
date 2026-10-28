@@ -492,7 +492,7 @@
     adminSection = section;
     const root = adminRoot();
     const nav = `<h2>Admin centre</h2><p class="sub">Manage House Assist accounts, listings, hires, feedback, and site settings.</p><nav class="admin-nav" aria-label="Admin sections">${adminSections.map(([key,label]) => `<button type="button" class="btn ${section === key ? '' : 'alt'}" data-admin-section="${key}">${label}</button>`).join('')}</nav>`;
-    H(root, `${nav}<section class="card admin-loading"><span class="price">Loading ${adminEscape(adminSections.find(([key]) => key === section)?.[1] || 'dashboard')}…</span><p class="mut">Connecting to House Assist data.</p></section>`);
+    root.innerHTML = `${nav}<section class="card admin-loading"><span class="price">Loading ${adminEscape(adminSections.find(([key]) => key === section)?.[1] || 'dashboard')}…</span><p class="mut">Connecting to House Assist data.</p></section>`;
     root.querySelectorAll('[data-admin-section]').forEach(b => b.onclick = () => renderAdminSection(b.dataset.adminSection));
     try {
       let content = '';
@@ -519,7 +519,7 @@
         const d = await adminRequest('/admin/summary');
         content = `<div class="grid admin-settings-grid"><div class="card"><h3>Site branding</h3><p class="mut">These values appear on the site and its page icon.</p><label>Site name<input id="sn" value="${adminEscape(d.branding.name)}" maxlength="60"></label><label>Logo letter or emoji<input id="lg" value="${adminEscape(d.branding.mark)}" maxlength="2"></label><label>Favicon emoji<input id="fv" value="${adminEscape(d.branding.favicon)}" maxlength="2"></label><button class="btn" id="sv2" type="button">Save branding</button></div><div class="card"><h3>Admin session</h3><p class="mut">The server password protects this session, which expires after one hour.</p><button class="btn alt" id="adminLogoutSettings" type="button">Log out</button></div></div>`;
       }
-      H(root, `${nav}<section class="admin-section">${content}</section>`);
+      root.innerHTML = `${nav}<section class="admin-section">${content}</section>`;
       root.querySelectorAll('[data-admin-section]').forEach(b => b.onclick = () => renderAdminSection(b.dataset.adminSection));
       const search = root.querySelector('#adminSearchForm');
       if (search) { search.onsubmit = e => { e.preventDefault(); renderAdminSection(section); }; search.querySelector('button').onclick = () => renderAdminSection(section); }
@@ -537,7 +537,7 @@
         $('#adminLoginError').textContent='Your admin session was rejected. Enter the password again.';
         return;
       }
-      H(root,`${nav}<section class="card"><h3>Could not load this section</h3><p class="mut">${adminEscape(err.message||'Please try again.')}</p><button class="btn" id="adminSectionRetry" type="button">Retry</button></section>`);
+      root.innerHTML = `${nav}<section class="card"><h3>Could not load this section</h3><p class="mut">${adminEscape(err.message||'Please try again.')}</p><button class="btn" id="adminSectionRetry" type="button">Retry</button></section>`;
       root.querySelectorAll('[data-admin-section]').forEach(b=>b.onclick=()=>renderAdminSection(b.dataset.adminSection));
       root.querySelector('#adminSectionRetry').onclick=()=>renderAdminSection(section);
     }
@@ -549,6 +549,37 @@
     await renderAdminSection(adminSection);
   };
   $('#retryAdminLoad').onclick = admin;
+  const authenticateAdminDirect = async event => {
+    event.preventDefault();
+    if (adminLoginBusy) return;
+    adminLoginBusy = true;
+    const button = $('#adminLoginButton');
+    button.disabled = true;
+    $('#adminLoginError').textContent = '';
+    try {
+      const result = await request('/admin/session', {
+        method: 'POST',
+        body: JSON.stringify({ pin: $('#adminPassword').value }),
+      });
+      storeToken(result.token);
+      $('#adminLogin').classList.add('hide');
+      $('#adminPanel').classList.remove('hide');
+      $('#adminPanelError').classList.add('hide');
+      await renderAdminSection('overview');
+    } catch (err) {
+      if ($('#adminPanel').classList.contains('hide')) {
+        $('#adminLoginError').textContent = err.message || 'Admin sign-in failed.';
+      } else {
+        $('#adminPanelErrorText').textContent = err.message || 'The admin dashboard could not start.';
+        $('#adminPanelError').classList.remove('hide');
+      }
+    } finally {
+      adminLoginBusy = false;
+      button.disabled = false;
+    }
+  };
+  $('#adminLoginForm').onsubmit = authenticateAdminDirect;
+  $('#adminLoginButton').onclick = authenticateAdminDirect;
 
   (async () => {
     if (isAdminPath) {
