@@ -415,9 +415,12 @@
     $('#adminPanelErrorText').textContent = '';
     await admin();
   };
+  let adminLoginBusy = false;
   if (isAdminPath) {
-    $('#adminLoginForm').onsubmit = async event => {
+    const authenticateAdmin = async event => {
       event.preventDefault();
+      if (adminLoginBusy) return;
+      adminLoginBusy = true;
       const button = $('#adminLoginButton');
       const message = $('#adminLoginError');
       message.textContent = '';
@@ -432,9 +435,12 @@
       } catch (err) {
         message.textContent = err.message || 'Admin sign-in failed.';
       } finally {
+        adminLoginBusy = false;
         button.disabled = false;
       }
     };
+    $('#adminLoginForm').onsubmit = authenticateAdmin;
+    $('#adminLoginButton').onclick = authenticateAdmin;
     $('#adminLogout').onclick = () => {
       storeToken('');
       $('#adminPanel').classList.add('hide');
