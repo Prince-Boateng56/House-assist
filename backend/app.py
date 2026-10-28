@@ -75,6 +75,17 @@ def error(message: str, status: int = 400):
     return jsonify({"error": message}), status
 
 
+def unique_conflict(exc: pg_errors.UniqueViolation):
+    constraint = getattr(getattr(exc, "diag", None), "constraint_name", "")
+    if constraint in {"users_username_lower_uq", "users_username_key"}:
+        return error("That username is already in use. Try a different username.", 409)
+    if constraint in {"users_email_lower_uq", "users_email_key"}:
+        return error("A House Assist account with this email already exists. Sign in using its existing method.", 409)
+    if constraint == "users_pkey":
+        return error("This Google account already has a House Assist profile. Try signing in instead.", 409)
+    return error("This account conflicts with an existing record. Check the username and email, then try again.", 409)
+
+
 def body() -> dict[str, Any]:
     return request.get_json(silent=True) or {}
 
@@ -291,11 +302,11 @@ def register():
     except ValueError as exc:
         g.db.rollback()
         return error(str(exc), 409)
-    except pg_errors.UniqueViolation:
+    except pg_errors.UniqueViolation as exc:
         g.db.rollback()
         if "user_id" in locals():
             delete_supabase_user(user_id)
-        return error("That username is already in use.", 409)
+        return unique_conflict(exc)
     except (KeyError, RuntimeError) as exc:
         g.db.rollback()
         return error(str(exc), 503)
@@ -387,9 +398,9 @@ def google_login():
                 g.db.execute("INSERT INTO house_assist.helpers(user_id,name,location,services,price) VALUES(?,?,?,?,?)",
                              (user_id, username, location, json.dumps(services), price))
             g.db.commit()
-        except pg_errors.UniqueViolation:
+        except pg_errors.UniqueViolation as exc:
             g.db.rollback()
-            return error("That username is already in use.", 409)
+            return unique_conflict(exc)
         row = g.db.execute("SELECT * FROM house_assist.users WHERE id=?", (user_id,)).fetchone()
     elif not row["email"]:
         g.db.execute("UPDATE house_assist.users SET email=? WHERE id=?", (email, user_id))
@@ -444,9 +455,9 @@ def update_me():
         g.db.execute("UPDATE house_assist.preferences SET theme=?,layout=?,compact=?,colors=? WHERE user_id=?",
                      (str(data.get("theme", "Ocean")), str(data.get("layout", "grid")), bool(data.get("compact", False)), json.dumps(colors), user["id"]))
         g.db.commit()
-    except pg_errors.UniqueViolation:
+    except pg_errors.UniqueViolation as exc:
         g.db.rollback()
-        return error("That username is already in use.", 409)
+        return unique_conflict(exc)
     return me()
 
 
@@ -615,11 +626,11 @@ def admin_add_user():
     except (ValueError, RuntimeError) as exc:
         g.db.rollback()
         return error(str(exc), 409 if isinstance(exc, ValueError) else 503)
-    except pg_errors.UniqueViolation:
+    except pg_errors.UniqueViolation as exc:
         g.db.rollback()
         if user_id:
             delete_supabase_user(user_id)
-        return error("That username is already in use.", 409)
+        return unique_conflict(exc)
     return jsonify({"ok": True}), 201
 
 
