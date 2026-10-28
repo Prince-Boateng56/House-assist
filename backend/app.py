@@ -136,7 +136,19 @@ def google_profile_name(google_user: dict[str, Any], email: str) -> str:
         for value in (profile.get("full_name"), profile.get("name"), f"{given} {family}"):
             name = clean_google_name(value)
             if len(name) >= 2:
-                return name.title()
+                name = name.title()
+                parts = name.split()
+                local_part = re.sub(r"\d+$", "", email.split("@", 1)[0]).lower()
+                compact_local = re.sub(r"[^a-z]", "", local_part)
+                if len(parts) == 2:
+                    first = re.sub(r"[^a-z]", "", parts[0].lower())
+                    last = re.sub(r"[^a-z]", "", parts[-1].lower())
+                    if (first and last and compact_local.startswith(first) and compact_local.endswith(last)
+                            and len(compact_local) > len(first) + len(last)):
+                        middle = compact_local[len(first):-len(last)].title()
+                        if middle:
+                            name = f"{parts[0]} {middle} {parts[-1]}"
+                return name
 
     local_part = re.sub(r"\d+$", "", email.split("@", 1)[0])
     words = [part for part in re.split(r"[._+\-]+", local_part) if part]
@@ -144,10 +156,15 @@ def google_profile_name(google_user: dict[str, Any], email: str) -> str:
     return clean_google_name(fallback) or "Google User"
 
 
-def unique_google_username(preferred: str, email: str) -> str:
+def unique_google_username(preferred: str, email: str, exclude_user_id: Any = None) -> str:
     base = preferred[:40].strip() or "Google User"
 
     def is_taken(candidate: str) -> bool:
+        if exclude_user_id is not None:
+            return g.db.execute(
+                "SELECT 1 FROM house_assist.users WHERE lower(username)=lower(?) AND id<>? LIMIT 1",
+                (candidate, exclude_user_id),
+            ).fetchone() is not None
         return g.db.execute(
             "SELECT 1 FROM house_assist.users WHERE lower(username)=lower(?) LIMIT 1",
             (candidate,),
@@ -437,6 +454,39 @@ def google_login():
     if not valid_email(email):
         return error("Google did not provide a valid email address.", 401)
     row = g.db.execute("SELECT * FROM house_assist.users WHERE id=?", (user_id,)).fetchone()
+    if not row:
+        email_row = g.db.execute(
+            "SELECT * FROM house_assist.users WHERE lower(email)=lower(?) ORDER BY created_at LIMIT 1",
+            (email,),
+        ).fetchone()
+        app_metadata = google_user.get("app_metadata") or {}
+        providers = app_metadata.get("providers") or []
+        google_identity = app_metadata.get("provider") == "google" or "google" in providers
+        user_metadata = google_user.get("user_metadata") or {}
+        identities = google_user.get("identities") or []
+        identity_verified = any(
+            identity.get("provider") == "google"
+            and isinstance(identity.get("identity_data"), dict)
+            and identity["identity_data"].get("email_verified") is True
+            for identity in identities
+            if isinstance(identity, dict)
+        )
+        email_verified = bool(
+            google_user.get("email_confirmed_at")
+            or google_user.get("confirmed_at")
+            or (isinstance(user_metadata, dict) and user_metadata.get("email_verified") is True)
+            or identity_verified
+        )
+        if email_row and google_identity and email_verified:
+            row = email_row
+            preferred_name = google_profile_name(google_user, email)
+            if preferred_name.casefold() != row["username"].casefold():
+                linked_name = unique_google_username(preferred_name, email, exclude_user_id=row["id"])
+                g.db.execute("UPDATE house_assist.users SET username=? WHERE id=?", (linked_name, row["id"]))
+                if row["role"] == "helper":
+                    g.db.execute("UPDATE house_assist.helpers SET name=? WHERE user_id=?", (linked_name, row["id"]))
+                g.db.commit()
+                row = g.db.execute("SELECT * FROM house_assist.users WHERE id=?", (row["id"],)).fetchone()
     if not row:
         if data.get("mode") == "login":
             return error("No House Assist account exists for this Google account. Sign up first.", 404)
