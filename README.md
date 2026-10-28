@@ -24,6 +24,10 @@ Authentication uses Supabase Auth for passwords and the private `house_assist` s
 
 Password accounts require a valid full name, email, password and role-specific profile details. The real email is stored in Supabase Auth and in `house_assist.users`; login requires the username derived from the name and the matching email. For Google signup or sign-in, customers select their region before pressing the Google button. House helps select their region, services and daily price. After Google verification, House Assist uses the Google profile name as the username, falling back to a cleaned email name if needed, then opens the dashboard for the selected role.
 
+### Reset a password
+
+Manual sign-in users can select **Forgot password?** to request a recovery email for their account email. The recovery link returns to the app, where they choose and confirm a new password, then sign in with their usual username and email. The app redirects to its current origin, so add every production, preview, and local app URL to Supabase **Authentication â†’ URL Configuration â†’ Redirect URLs**. Configure a production SMTP provider in Supabase for reliable recovery email delivery.
+
 ### Enable Google sign-in
 
 1. In Supabase, open **Authentication → Providers → Google** and enable Google.

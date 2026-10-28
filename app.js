@@ -20,7 +20,9 @@
   const storeToken = value => { token = value || ''; if (token) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY); };
   const showError = err => toast(err.message);
   const GOOGLE_PENDING_KEY = 'house-assist-google-pending';
+  const RESET_PENDING_KEY = 'house-assist-password-reset-pending';
   let supabaseClient;
+  let recoverySession = false;
 
   const createSupabaseClient = config => window.supabase.createClient(config.url, config.publishable_key, {
     auth: {
@@ -42,6 +44,7 @@
   });
 
   async function continueWithGoogle() {
+    localStorage.removeItem(RESET_PENDING_KEY);
     const details = googleDetails();
     $('#em').readOnly = false;
     $('#googleAuth').textContent = 'Continue with Google';
@@ -69,11 +72,23 @@
     const fragment = new URLSearchParams(callbackUrl.hash.replace(/^#/, ''));
     const fragmentAccessToken = fragment.get('access_token');
     const fragmentRefreshToken = fragment.get('refresh_token');
+    const recoveryType = callbackUrl.searchParams.get('type') === 'recovery' || fragment.get('type') === 'recovery';
+    const pendingReset = (() => {
+      try { return JSON.parse(localStorage.getItem(RESET_PENDING_KEY) || 'null'); }
+      catch { return null; }
+    })();
+    const resetCallback = recoveryType || Boolean(pendingReset && (callbackCode || fragmentAccessToken));
     const callbackError = callbackUrl.searchParams.get('error_description') ||
       callbackUrl.searchParams.get('error') || fragment.get('error_description') || fragment.get('error');
     const oauthCallback = Boolean(callbackCode || callbackError || fragmentAccessToken);
     if (callbackError) {
       window.history.replaceState({}, document.title, window.location.pathname);
+      if (resetCallback || pendingReset) {
+        localStorage.removeItem(RESET_PENDING_KEY);
+        showAuth('login', pendingReset?.role || 'customer');
+        $('#aErr').textContent = 'This password reset link is invalid or has expired. Request a new one.';
+        return true;
+      }
       throw new Error('Google sign-in was rejected by Supabase: ' + callbackError.replace(/\+/g, ' '));
     }
     if (!oauthCallback) return false;
@@ -104,6 +119,22 @@
       session = data.session;
     }
     if (!session) throw new Error('Google sign-in did not complete. Please try again.');
+    if (resetCallback) {
+      recoverySession = true;
+      const callbackEmail = session.user?.email || '';
+      const matchingPending = pendingReset?.email?.toLowerCase() === callbackEmail.toLowerCase() ? pendingReset : {};
+      localStorage.setItem(RESET_PENDING_KEY, JSON.stringify({
+        ...matchingPending,
+        email: callbackEmail || matchingPending.email || '',
+        role: matchingPending.role || 'customer',
+      }));
+      $('#auth').classList.add('hide'); $('#land').classList.add('hide'); $('#learn').classList.add('hide');
+      $('#passwordResetRequestPage').classList.add('hide');
+      $('#passwordResetPage').classList.remove('hide');
+      $('#resetPasswordMsg').textContent = '';
+      $('#newPassword').focus();
+      return true;
+    }
     const details = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
     const result = await request('/auth/google', {
       method: 'POST',
@@ -119,6 +150,92 @@
   }
 
   $('#googleAuth').onclick = continueWithGoogle;
+
+  function showPasswordResetRequest() {
+    $('#aErr').textContent = '';
+    $('#resetRequestMsg').textContent = '';
+    $('#resetEmail').value = $('#em').value.trim();
+    $('#auth').classList.add('hide'); $('#land').classList.add('hide'); $('#learn').classList.add('hide');
+    $('#passwordResetPage').classList.add('hide');
+    $('#passwordResetRequestPage').classList.remove('hide');
+    $('#resetEmail').focus();
+  }
+
+  $('#fg').onclick = event => { event.preventDefault(); showPasswordResetRequest(); };
+  $('#backToLogin').onclick = event => {
+    event.preventDefault();
+    $('#passwordResetRequestPage').classList.add('hide');
+    $('#passwordResetPage').classList.add('hide');
+    showAuth('login', S.role);
+    $('#em').value = $('#resetEmail').value.trim();
+  };
+
+  $('#sendResetEmail').onclick = async () => {
+    const button = $('#sendResetEmail');
+    const email = $('#resetEmail').value.trim();
+    const message = $('#resetRequestMsg');
+    message.style.color = '#A3B3CC';
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      message.style.color = '#FF8A80';
+      message.textContent = 'Enter a valid email address.';
+      return;
+    }
+    button.disabled = true;
+    button.textContent = 'Sending…';
+    try {
+      const config = await request('/auth/config');
+      if (!window.supabase) throw new Error('The password reset service could not be loaded. Refresh the page and try again.');
+      supabaseClient = createSupabaseClient(config);
+      const pending = { email, username: $('#u').value.trim(), role: S.role, timestamp: Date.now() };
+      localStorage.setItem(RESET_PENDING_KEY, JSON.stringify(pending));
+      const redirectTo = window.location.origin + window.location.pathname;
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) throw error;
+      message.style.color = '#A3B3CC';
+      message.textContent = 'If an account exists for that email, a password reset link has been sent. Check your inbox.';
+    } catch (err) {
+      localStorage.removeItem(RESET_PENDING_KEY);
+      message.style.color = '#FF8A80';
+      message.textContent = err.message || 'Could not send the reset email. Please try again.';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Send reset link';
+    }
+  };
+
+  $('#saveNewPassword').onclick = async () => {
+    const password = $('#newPassword').value;
+    const confirmation = $('#confirmPassword').value;
+    const message = $('#resetPasswordMsg');
+    message.textContent = '';
+    if (password.length < 6) { message.textContent = 'Your password must contain at least 6 characters.'; return; }
+    if (password !== confirmation) { message.textContent = 'The passwords do not match.'; return; }
+    if (!recoverySession || !supabaseClient) { message.textContent = 'This reset session is no longer valid. Request a new reset link.'; return; }
+    const button = $('#saveNewPassword');
+    button.disabled = true;
+    button.textContent = 'Saving…';
+    try {
+      const { error } = await supabaseClient.auth.updateUser({ password });
+      if (error) throw error;
+      let pending = {};
+      try { pending = JSON.parse(localStorage.getItem(RESET_PENDING_KEY) || '{}'); } catch { /* ignore invalid local state */ }
+      localStorage.removeItem(RESET_PENDING_KEY);
+      recoverySession = false;
+      await supabaseClient.auth.signOut().catch(() => {});
+      $('#passwordResetPage').classList.add('hide');
+      showAuth('login', pending.role || S.role || 'customer');
+      $('#u').value = pending.username || '';
+      $('#em').value = pending.email || '';
+      $('#pw').value = '';
+      $('#aErr').style.color = '#A3B3CC';
+      $('#aErr').textContent = 'Password reset successfully. Sign in with your new password.';
+    } catch (err) {
+      message.textContent = err.message || 'Could not update your password. Request a new reset link and try again.';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Save new password';
+    }
+  };
 
   async function refreshHelpers() {
     try { helpers = await request('/helpers'); }
@@ -153,6 +270,7 @@
     $('#em').readOnly = false;
     const username = $('#u').value.trim(), email = $('#em').value.trim(), password = $('#pw').value;
     const signup = S.mode === 'signup';
+    $('#aErr').style.color = '#FF8A80';
     $('#aErr').textContent = '';
     if (!username) return reportError($('#aErr'), new Error('Enter your username.'));
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reportError($('#aErr'), new Error('Enter a valid email address.'));
@@ -168,6 +286,7 @@
     }
     try {
       const result = await request(signup ? '/auth/register' : '/auth/login', { method: 'POST', body: JSON.stringify(details) });
+      localStorage.removeItem(RESET_PENDING_KEY);
       storeToken(result.token); applyUser(result.user); await refreshHelpers();
       const me = await request('/me');
       S.lay = me.layout || 'grid'; S.dense = Boolean(me.compact);
@@ -317,6 +436,15 @@
       document.body.classList.toggle('dense', S.dense); go('home');
     } catch (err) {
       if (oauthCallback) {
+        let pendingReset = null;
+        try { pendingReset = JSON.parse(localStorage.getItem(RESET_PENDING_KEY) || 'null'); } catch { /* ignore invalid local state */ }
+        if (pendingReset || new URL(window.location.href).searchParams.get('type') === 'recovery') {
+          localStorage.removeItem(RESET_PENDING_KEY);
+          showAuth('login', pendingReset?.role || 'customer');
+          $('#aErr').textContent = 'This password reset link is invalid or has expired. Request a new one.';
+          console.warn('Password reset did not complete:', err.message);
+          return;
+        }
         const pending = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
         // The selected role is present for both signup and login. Restore the
         // actual mode saved before leaving for Google instead of treating every

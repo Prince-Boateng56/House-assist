@@ -95,6 +95,31 @@
  </div></div>
 </section>
 
+<div class="formside hide" id="passwordResetRequestPage">
+ <div class="glass">
+  <h2>Reset your password</h2>
+  <p class="gs">Enter the email address on your House Assist account. If it matches, we’ll send a reset link.</p>
+  <label for="resetEmail">Email</label>
+  <input id="resetEmail" type="email" autocomplete="email" placeholder="you@example.com">
+  <button class="btn" style="width:100%;margin-top:12px" id="sendResetEmail" type="button">Send reset link</button>
+  <p id="resetRequestMsg" style="min-height:24px;margin:10px 0 0;color:#A3B3CC"></p>
+  <p class="swl"><a id="backToLogin">Back to sign in</a></p>
+ </div>
+</div>
+
+<div class="formside hide" id="passwordResetPage">
+ <div class="glass">
+  <h2>Choose a new password</h2>
+  <p class="gs" id="resetPasswordHelp">Enter and confirm your new password.</p>
+  <label for="newPassword">New password</label>
+  <input id="newPassword" type="password" autocomplete="new-password" minlength="6" placeholder="At least 6 characters">
+  <label for="confirmPassword">Confirm new password</label>
+  <input id="confirmPassword" type="password" autocomplete="new-password" minlength="6" placeholder="Enter it again">
+  <button class="btn" style="width:100%;margin-top:12px" id="saveNewPassword" type="button">Save new password</button>
+  <p id="resetPasswordMsg" style="color:#FF8A80;min-height:24px;margin:10px 0 0"></p>
+ </div>
+</div>
+
 <div id="app" class="hide">
  <header><button class="burger" id="bg" aria-label="Open menu">☰</button><div class="logo"><span class="mark">⌂</span><span class="sn">House Assist</span></div><span class="sp"></span><span class="pill" id="who"></span></header>
  <nav id="drawer" aria-label="Menu"></nav><div id="scrim" class="hide"></div>

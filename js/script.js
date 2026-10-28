@@ -56,8 +56,6 @@ $('#go').onclick=()=>{
 authUI();
 $('#swL').onclick=e=>{if(e.target.tagName=='A'){S.mode=S.mode=='login'?'signup':'login';$('#aErr').textContent='';authUI()}};
 $('#eye').onclick=()=>{const p=$('#pw'),h=p.type=='password';p.type=h?'text':'password';$('#eye').textContent=h?'Hide':'Show'};
-$('#fg').onclick=()=>$('#aErr').textContent='Password reset will work once the backend is connected.';
-
 const closeDD=()=>document.querySelectorAll('.dd.open').forEach(x=>x.classList.remove('open'));
 document.addEventListener('click',closeDD);document.addEventListener('keydown',e=>{if(e.key=='Escape')closeDD()});
 function enh(root=document){root.querySelectorAll('select:not([data-dd])').forEach(s=>{s.dataset.dd=1;s.style.display='none';
