@@ -3,11 +3,7 @@
   const API = '/api';
   const TOKEN_KEY = 'house-assist-token';
   const requestedPath = window.location.pathname.replace(/\/$/, '');
-  if (requestedPath === '/admin') {
-    window.location.replace('/admin.');
-    return;
-  }
-  const isAdminPath = requestedPath === '/admin.';
+  const isAdminPath = requestedPath === '/admin.' || requestedPath === '/admin';
   let token = isAdminPath ? '' : (localStorage.getItem(TOKEN_KEY) || '');
   const request = async (path, options = {}) => {
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
