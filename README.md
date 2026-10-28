@@ -33,7 +33,10 @@ Password accounts require a valid email address, username, password and role-spe
 4. Copy the Google client ID and client secret into the Supabase Google provider settings.
 5. In Supabase **Authentication → URL Configuration**, set the Site URL to `https://house-assist-omega.vercel.app` and add these redirect URLs:
    - `https://house-assist-omega.vercel.app`
+   - `https://house-assist-omega.vercel.app/**`
+   - `http://localhost:5000`
    - `http://127.0.0.1:5000`
+   Add the exact origin of any custom or Vercel preview domain you use. Supabase only returns to URLs in this allow-list; an unlisted `redirectTo` can fall back to the Site URL.
 6. Deploy the application. The auth screen’s **Continue with Google** button preserves the selected customer/helper role and collects the required profile details for new accounts.
 
 Google OAuth configuration is managed in Supabase and Google Cloud; never put the Google client secret in the repository or browser code.
@@ -43,7 +46,7 @@ If Google returns `server_error`, `unexpected_failure`, or `Unable to exchange e
 - The Google OAuth client is a **Web application** client.
 - Its authorized redirect URI is exactly `https://svhccqudltmkeninethu.supabase.co/auth/v1/callback`.
 - The Google client ID and client secret in Supabase exactly match that same Google client.
-- The Supabase Site URL and redirect allow-list contain `https://house-assist-omega.vercel.app` with no trailing path or query string.
+- The Supabase Site URL is `https://house-assist-omega.vercel.app`, and the redirect allow-list contains the exact origin serving the app, including `localhost` versus `127.0.0.1`, custom domains, or preview domains.
 - If the Google OAuth app is in testing mode, the signing-in Google account is listed as a test user.
 
 After changing the provider credentials, retry in a private browser window so an old Google authorization code is not reused.

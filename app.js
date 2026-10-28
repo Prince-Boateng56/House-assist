@@ -23,6 +23,17 @@
   let supabaseClient;
   let googleSession;
 
+  const createSupabaseClient = config => window.supabase.createClient(config.url, config.publishable_key, {
+    auth: {
+      // Keep the browser callback format predictable and use the code exchange
+      // supported by this app's existing callback handler.
+      flowType: 'pkce',
+      detectSessionInUrl: false,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
+
   const googleDetails = () => ({
     username: $('#u').value.trim(),
     role: S.role,
@@ -41,7 +52,7 @@
     try {
       const config = await request('/auth/config');
       if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
-      supabaseClient = window.supabase.createClient(config.url, config.publishable_key);
+      supabaseClient = createSupabaseClient(config);
       sessionStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify({ ...details, username: '', mode: S.mode }));
       const { error: oauthError } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
@@ -76,8 +87,12 @@
   async function finishGoogleSignIn() {
     const callbackUrl = new URL(window.location.href);
     const callbackCode = callbackUrl.searchParams.get('code');
-    const callbackError = callbackUrl.searchParams.get('error_description') || callbackUrl.searchParams.get('error');
-    const oauthCallback = Boolean(callbackCode || callbackError || callbackUrl.hash.includes('access_token'));
+    const fragment = new URLSearchParams(callbackUrl.hash.replace(/^#/, ''));
+    const fragmentAccessToken = fragment.get('access_token');
+    const fragmentRefreshToken = fragment.get('refresh_token');
+    const callbackError = callbackUrl.searchParams.get('error_description') ||
+      callbackUrl.searchParams.get('error') || fragment.get('error_description') || fragment.get('error');
+    const oauthCallback = Boolean(callbackCode || callbackError || fragmentAccessToken);
     if (callbackError) {
       window.history.replaceState({}, document.title, window.location.pathname);
       throw new Error('Google sign-in was rejected by Supabase: ' + callbackError.replace(/\+/g, ' '));
@@ -88,10 +103,20 @@
     }
     const config = await request('/auth/config');
     if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
-    supabaseClient = window.supabase.createClient(config.url, config.publishable_key);
+    supabaseClient = createSupabaseClient(config);
     let session;
     if (callbackCode) {
       const { data, error } = await supabaseClient.auth.exchangeCodeForSession(callbackCode);
+      if (error) throw error;
+      session = data.session;
+    } else if (fragmentAccessToken) {
+      // Support callbacks created by older clients using the implicit flow.
+      // The URL is cleaned above, so restore the fragment tokens explicitly.
+      if (!fragmentRefreshToken) throw new Error('Google returned an incomplete sign-in session. Please try again.');
+      const { data, error } = await supabaseClient.auth.setSession({
+        access_token: fragmentAccessToken,
+        refresh_token: fragmentRefreshToken,
+      });
       if (error) throw error;
       session = data.session;
     } else {
@@ -334,13 +359,17 @@
       (user.colors || []).forEach((value, i) => document.documentElement.style.setProperty(['--bg', '--sf', '--ink', '--ac'][i], value));
       document.body.classList.toggle('dense', S.dense); go('home');
     } catch (err) {
-      storeToken('');
       if (oauthCallback) {
         const pending = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
-        showAuth(pending.role ? 'signup' : 'login', pending.role || 'customer');
-        $('#aErr').textContent = '';
+        // The selected role is present for both signup and login. Restore the
+        // actual mode saved before leaving for Google instead of treating every
+        // callback as a signup (or silently falling back to login).
+        showAuth(pending.mode || 'login', pending.role || 'customer');
+        $('#aErr').textContent = err.message || 'Google sign-in could not be completed. Please try again.';
         console.warn('Google sign-in did not complete:', err.message);
+        return;
       }
+      storeToken('');
     }
   })();
 })();
