@@ -4908,6 +4908,58 @@ input[type=color] {
   }
 }
 
+/* Keep landing copy visible and readable while preserving styled typography */
+#land .up,
+#land .lh h1 .w > span,
+#land .lh h1 .w > span.g {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+#land .lnav .logo,
+#land .lnav .lk a,
+#land .lnav .lg,
+#land .lnav > .btn,
+#land .lh .eye,
+#land .lh h1,
+#land .lh .lead,
+#land .sbar .dd > button,
+#land .svc b,
+#land .svc p,
+#land .tr b,
+#land .tr small,
+#land .lsec > h2,
+#land .lsec > .sub,
+#land .lead2,
+#land .lf2 {
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+#land .lh h1,
+#land .lsec > h2 {
+  font-family: "Manrope", system-ui, sans-serif;
+  font-weight: 800;
+}
+#land .lh .eye,
+#land .lsec > .eye {
+  font-weight: 700;
+  letter-spacing: .18em;
+}
+#land .lh .lead {
+  font-weight: 500;
+  line-height: 1.65;
+}
+#land .svc b,
+#land .tr b {
+  font-weight: 700;
+}
+#land .svc p,
+#land .tr small,
+#land .lsec > .sub,
+#land .lead2 {
+  font-weight: 500;
+  line-height: 1.55;
+}
+
 /* Landing page: premium home-services marketplace */
 #land {
   background: #fff;
