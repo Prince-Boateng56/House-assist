@@ -30,14 +30,15 @@ body {
   margin: 0;
   background: linear-gradient(180deg, #071d2f 0%, #0b2035 100%);
   color: var(--ink);
-  font: 400 16px/1.5 Figtree,system-ui,sans-serif;
+  font: 400 16px/1.55 "DM Sans",system-ui,sans-serif;
   letter-spacing: -0.01em;
 }
 h1,
 h2,
 h3,
 .disp {
-  font-family: "Bricolage Grotesque",Georgia,sans-serif;
+  font-family: "Manrope",system-ui,sans-serif;
+  font-weight: 800;
   letter-spacing: -.02em;
   margin: 0;
   line-height: 1.1;
@@ -47,6 +48,27 @@ input,
 select {
   font: inherit;
   color: inherit;
+}
+#land,
+#auth,
+#app,
+#adminArea {
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+#land h1,
+#land h2,
+#land h3,
+#auth h1,
+#auth h2,
+#auth h3,
+#app h1,
+#app h2,
+#app h3,
+#adminArea h1,
+#adminArea h2,
+#adminArea h3 {
+  font-family: "Manrope", system-ui, sans-serif;
+  font-weight: 800;
 }
 button {
   cursor: pointer;
@@ -4988,9 +5010,9 @@ input[type=color] {
 #land .lh h1 {
   max-width: 8ch;
   color: #102b57;
-  font-family: Figtree, sans-serif;
+  font-family: "Manrope", sans-serif;
   font-size: clamp(52px, 5vw, 76px);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -.07em;
   line-height: .96;
 }
@@ -5001,7 +5023,8 @@ input[type=color] {
   max-width: 39ch;
   margin: 22px 0 0;
   color: #687a81;
-  font-size: 16px;
+  font-size: 17px;
+  font-weight: 500;
   line-height: 1.65;
 }
 #land .sbar {
@@ -5073,13 +5096,15 @@ input[type=color] {
 #land .lsec > h2 {
   max-width: 700px;
   color: #17252b;
-  font-family: Figtree, sans-serif;
+  font-family: "Manrope", sans-serif;
+  font-weight: 800;
   font-size: clamp(30px, 3vw, 43px);
   letter-spacing: -.06em;
 }
 #land .lsec > .sub,
 #land .lead2 {
   color: #718087;
+  font-size: 15px;
 }
 #land .eye {
   color: #0b7185;
