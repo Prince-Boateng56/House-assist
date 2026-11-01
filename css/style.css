@@ -5201,6 +5201,15 @@ input[type=color] {
   align-items: center;
   background: #f7fbfc;
 }
+#land .why2 > div:first-child {
+  padding: 18px 0 18px 12px;
+}
+#land .why2 h2 {
+  max-width: 10ch;
+}
+#land .why2 .lead2 {
+  max-width: 40ch;
+}
 #land .why2 .wimg {
   min-height: 280px;
   border-radius: 10px;
@@ -5234,11 +5243,42 @@ input[type=color] {
 #land #pricing {
   background: #f7fbfc;
 }
+#land #pricing > h2 {
+  max-width: 560px;
+}
 #land #pricing .card {
   margin-top: 22px;
 }
 #land #about {
   margin-bottom: 40px;
+}
+#land .landing-cta {
+  margin-top: 36px;
+  border: 0;
+  border-radius: 0;
+  color: #fff;
+  background:
+    linear-gradient(90deg, rgba(16,43,87,.98), rgba(7,91,112,.92)),
+    url("../images/slide-04-housekeeper.jpg") center / cover;
+  box-shadow: none;
+}
+#land .landing-cta h2,
+#land .landing-cta .lead,
+#land .landing-cta .eye {
+  color: #fff;
+}
+#land .landing-cta .eye {
+  opacity: .76;
+}
+#land .landing-cta .btn {
+  color: #075b70;
+  background: #fff;
+  box-shadow: none;
+}
+#land .landing-cta .btn.alt {
+  color: #fff;
+  border-color: rgba(255,255,255,.55);
+  background: transparent;
 }
 #land .lf2 {
   color: #fff;
