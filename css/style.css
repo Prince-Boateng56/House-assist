@@ -2184,6 +2184,409 @@ textarea::placeholder {
     padding-bottom: 22px;
   }
 }
+
+/* new product surfaces: intentionally replaces the legacy visual system */
+#land,
+#auth,
+#app {
+  font-family: Figtree, system-ui, sans-serif;
+}
+#land {
+  background: #f4fbfc;
+}
+#land .lhero {
+  background: #f4fbfc;
+}
+#land .lhero .slides {
+  display: none;
+}
+#land .lnav {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 22px 24px;
+}
+#land .lnav .logo {
+  color: #0c4660;
+}
+#land .lnav .mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #0a91bd;
+}
+#land .lnav .lk a {
+  color: #527181;
+  border-radius: 8px;
+}
+#land .lnav .lg {
+  color: #0b6687;
+  border: 0;
+  background: transparent;
+}
+#land .lnav > .btn {
+  padding: 11px 18px;
+  background: #0a91bd;
+  border-color: #0a91bd;
+  border-radius: 8px;
+}
+#land .lh {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 68px 24px 86px;
+  grid-template-columns: minmax(0, .95fr) minmax(340px, .75fr);
+  gap: 80px;
+}
+#land .lh::after {
+  min-height: 430px;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(10, 145, 189, .05), rgba(8, 92, 123, .14)),
+    url("../images/slide-01-cleaners-living-room.jpg") center / cover;
+  box-shadow: 0 22px 45px rgba(11, 80, 104, .16);
+}
+#land .lhero .eye {
+  color: #0a91bd;
+  font-weight: 600;
+}
+#land .lh h1 {
+  color: #093d54;
+  font-size: clamp(52px, 7vw, 94px);
+  letter-spacing: -.075em;
+  line-height: .92;
+}
+#land .lh h1 .w > span,
+#land .lh h1 .w > span.g {
+  animation: none;
+  color: inherit;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+#land .lh .lead {
+  max-width: 48ch;
+  color: #66808d;
+  line-height: 1.65;
+}
+#land .sbar {
+  max-width: 680px;
+  padding: 7px;
+  border: 1px solid #d6e8ed;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(10, 91, 119, .1);
+}
+#land .sbar .btn {
+  background: #0a91bd;
+  border-color: #0a91bd;
+  border-radius: 8px;
+}
+#land .lsec {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 72px 24px;
+}
+#land .lsec > h2 {
+  color: #093d54;
+  letter-spacing: -.05em;
+}
+#land .svg8 {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 30px;
+}
+#land button.svc {
+  min-height: 170px;
+  padding: 20px;
+  align-items: flex-start;
+  text-align: left;
+  border: 1px solid #dcecef;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(28, 91, 112, .05);
+}
+#land button.svc:hover:not([disabled]) {
+  border-color: #77c8df;
+  transform: translateY(-4px);
+}
+#land .svc .ic {
+  width: 42px;
+  height: 42px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: #e4f6fb;
+}
+#land .svc b {
+  color: #1b5269;
+  font-size: 15px;
+}
+#land .svc p {
+  color: #7a929d;
+  font-size: 12.5px;
+}
+#land .why2 {
+  max-width: 1160px;
+  padding-block: 74px;
+  grid-template-columns: 1fr;
+}
+#land #how .g3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+#land #how .card,
+#land #pricing .card,
+#land .why2 {
+  background: transparent;
+}
+#land #how .card {
+  padding: 25px;
+  border: 1px solid #dcecef;
+  box-shadow: none;
+}
+#land .lf2 {
+  background: #e4f4f8;
+}
+
+#auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(390px, .85fr);
+  background: #f4fbfc;
+}
+#auth .hero {
+  min-height: 100vh;
+  padding: 42px 8vw;
+  justify-content: flex-end;
+  background:
+    linear-gradient(180deg, rgba(6, 62, 84, .1), rgba(6, 62, 84, .75)),
+    url("../images/login-living-room.jpg") center / cover;
+}
+#auth .hero::before,
+#auth .hero > .cut {
+  display: none;
+}
+#auth .hero .logo {
+  top: 42px;
+  left: 8vw;
+  color: #fff;
+}
+#auth .hero h1 {
+  max-width: 8ch;
+  color: #fff;
+  font-size: clamp(48px, 6vw, 84px);
+  letter-spacing: -.07em;
+}
+#auth .hero p {
+  max-width: 35ch;
+  color: rgba(255,255,255,.82);
+  white-space: normal;
+}
+#auth .formside {
+  background: #fff;
+}
+#auth .glass {
+  max-width: 460px;
+  min-height: 100vh;
+  padding: 60px 42px;
+  background: #fff;
+  border-left: 1px solid #dcecef;
+}
+#auth .glass h2 {
+  color: #093d54;
+  font-size: 34px;
+  letter-spacing: -.045em;
+}
+#auth .glass .gs {
+  color: #718b96;
+}
+#auth .seg {
+  border-color: #d7e8ed;
+  border-radius: 9px;
+  background: #f2f8fa;
+}
+#auth .seg button.on {
+  color: #075d7c;
+  background: #fff;
+  box-shadow: 0 3px 9px rgba(17, 74, 95, .1);
+}
+#auth input[type=text],
+#auth input[type=email],
+#auth input[type=password],
+#auth input[type=number],
+#auth select,
+#auth .dd > button {
+  color: #173f51;
+  background: #fff;
+  border-color: #cfe2e8;
+  border-radius: 8px;
+}
+#auth #go {
+  background: #0a91bd;
+  border-color: #0a91bd;
+  border-radius: 8px;
+}
+#auth #googleAuth {
+  color: #1a5166;
+  background: #fff;
+  border-color: #cfe2e8;
+  border-radius: 8px;
+}
+
+#app {
+  min-height: 100vh;
+  background: #f4fbfc;
+}
+#app > header {
+  height: 76px;
+  padding: 0 34px;
+  background: #fff;
+  border-bottom: 1px solid #dcecef;
+  box-shadow: 0 3px 12px rgba(19, 84, 105, .04);
+}
+#app > header .logo {
+  color: #0b4961;
+}
+#app > header .mark {
+  background: #0a91bd;
+}
+#app > header .pill {
+  color: #0a698b;
+  background: #e5f6fb;
+  border-color: #c9e8ef;
+}
+#app main {
+  max-width: 1180px;
+  padding: 48px 34px 80px;
+}
+#app main h2 {
+  color: #093d54;
+  font-size: 38px;
+  letter-spacing: -.05em;
+}
+#app .sub,
+#app .mut {
+  color: #718b96;
+}
+#drawer {
+  width: 245px;
+  top: 76px;
+  background: #fff;
+  border-right: 1px solid #dcecef;
+  box-shadow: 6px 0 22px rgba(19, 84, 105, .05);
+}
+#drawer a {
+  color: #587582;
+  border-radius: 8px;
+}
+#drawer a.on,
+#drawer a:hover {
+  color: #087394;
+  background: #e5f6fb;
+}
+#app .bar {
+  padding: 10px;
+  border: 1px solid #dcecef;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: none;
+}
+#app .helper.card {
+  padding: 22px;
+  border-radius: 14px;
+  background: #fff;
+  border-color: #dcecef;
+  box-shadow: 0 8px 19px rgba(28, 91, 112, .05);
+}
+#app .tag {
+  color: #0b6d8d;
+  background: #e5f6fb;
+  border-color: #c9e8ef;
+}
+#app .price {
+  color: #087394;
+}
+
+@media (max-width: 820px) {
+  #land .lnav {
+    padding: 16px;
+  }
+  #land .lh {
+    display: block;
+    padding: 30px 16px 38px;
+  }
+  #land .lh::after {
+    min-height: 235px;
+    margin-top: 24px;
+    border-radius: 18px;
+  }
+  #land .lh h1 {
+    font-size: 47px;
+  }
+  #land .lsec {
+    padding: 46px 16px;
+  }
+  #land .svg8 {
+    display: flex;
+    overflow-x: auto;
+    gap: 9px;
+  }
+  #land button.svc {
+    flex: 0 0 94px;
+    min-height: 94px;
+    align-items: center;
+    padding: 9px 6px;
+  }
+  #land .svc .ic {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 4px;
+    font-size: 17px;
+  }
+  #land .svc b {
+    width: 100%;
+    overflow: hidden;
+    font-size: 9px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #land .svc p,
+  #land .svc i {
+    display: none;
+  }
+  #auth {
+    display: block;
+    padding: 12px;
+  }
+  #auth .hero {
+    min-height: 280px;
+    padding: 24px;
+    border-radius: 18px;
+  }
+  #auth .hero .logo {
+    top: 24px;
+    left: 24px;
+  }
+  #auth .glass {
+    min-height: 0;
+    max-width: none;
+    padding: 32px 4px 20px;
+    border-left: 0;
+  }
+  #auth .glass h2 {
+    font-size: 28px;
+  }
+  #app > header {
+    height: 64px;
+    padding: 0 16px;
+  }
+  #app main {
+    padding: 28px 16px 88px;
+  }
+  #app main h2 {
+    font-size: 28px;
+  }
+  #drawer {
+    top: 64px;
+  }
+}
 @media (max-width: 1000px) {
   .lnav .lk {
     display: none;
