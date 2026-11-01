@@ -81,18 +81,30 @@ $('#bg').onclick=()=>open(true);$('#scrim').onclick=()=>open(false);
 $('#drawer').onclick=e=>{const k=e.target.closest('a')?.dataset.k;if(!k)return;open(false);
  if(k=='sos')return sos();if(k=='out')return location.reload();go(k)};
 function go(v){S.view=v;drawer();({home,guide,hired,messages,profile,admin})[v]();scrollTo(0,0)}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-app-nav]');
+ if(!b||$('#app').classList.contains('hide'))return;
+ e.preventDefault();
+ document.querySelectorAll('[data-app-nav]').forEach(x=>x.classList.toggle('on',x===b));
+ go(b.dataset.appNav);
+});
 
 /* listings */
 function home(){
  const c=S.role=='customer';
  let l=helpers.filter(h=>(!S.q||(h.n+h.l).toLowerCase().includes(S.q.toLowerCase()))&&(!S.sv||h.s.includes(S.sv)));
  l.sort((a,b)=>S.sort=='rating'?b.r-a.r:S.sort=='low'?a.p-b.p:b.p-a.p);
- H($('#view'),`<h2>${c?'Find a house help':'House helps on the platform'}</h2><p class="sub">${c?'Compare prices and ratings, then contact and hire in a few taps.':'See how others price their work and how they are rated.'}</p>
- <div class="bar"><input id="q" placeholder="Search name or area" value="${S.q}"><select id="sv"><option value="">All services</option>${['House Cleaning','Plumbing','Electrical','Mason','Painting','Repairs','Gardening','Lawn Care','Laundry','Ironing','Cooking','Kitchen Assist','Moving','Packing','Elderly Care','Child Care'].map(x=>`<option ${S.sv==x?'selected':''}>${x}</option>`).join('')}</select>
- <select id="so"><option value="rating">Top rated</option><option value="low" ${S.sort=='low'?'selected':''}>Price: low to high</option><option value="high" ${S.sort=='high'?'selected':''}>Price: high to low</option></select></div>
- <div class="grid ${S.lay=='list'?'list':''}">${l.map(card(c)).join('')||'<p class="mut">No house helps match. Clear the filters to see everyone.</p>'}</div>`);
+ const services=[['House Cleaning','✦'],['AC Repair','❄'],['Plumbing','⌁'],['Electrical','⚡'],['Laundry','▤'],['Gardening','♧'],['Child Care','♡'],['More','＋']];
+ const serviceButtons=services.map(([name,icon])=>`<button type="button" class="dash-service" data-service="${name}"><span>${icon}</span><small>${name}</small></button>`).join('');
+ H($('#view'),`<div class="dash-topline"><div><small class="dash-kicker">${c?'CUSTOMER HOME':'HOUSE HELP HOME'}</small><h2>Hello, ${esc((S.user&&S.user.name||'there').split(' ')[0])} <span aria-hidden="true">👋</span></h2><p class="sub">${c?'Find reliable help for the work around your home.':'Keep your profile up to date and connect with customers nearby.'}</p></div><button type="button" class="dash-bell" data-app-nav="messages" aria-label="Open messages">♧</button></div>
+ <div class="dash-search bar"><span aria-hidden="true">⌕</span><input id="q" placeholder="Search for a service or area" value="${S.q}"><button type="button" class="dash-filter" aria-label="Filter results">☷</button></div>
+ <section class="dash-promo"><div><small>HOUSE ASSIST</small><h3>${c?'Find help for your home.':'Show customers what you do best.'}</h3><p>${c?'Compare trusted people, agree the details and get started.':'Add your services and price so nearby customers can find you.'}</p><button type="button" class="btn" data-app-nav="${c?'guide':'profile'}">${c?'Explore services':'Update profile'} <span>→</span></button></div><div class="dash-promo-art" aria-hidden="true">✦</div></section>
+ <section class="dash-section"><div class="dash-section-head"><div><small class="dash-kicker">BROWSE BY CATEGORY</small><h3>Popular services</h3></div><button type="button" class="dash-see-all" data-app-nav="guide">See all →</button></div><div class="dash-services">${serviceButtons}</div></section>
+ <section class="dash-section dash-recommended"><div class="dash-section-head"><div><small class="dash-kicker">${c?'NEARBY HOUSE HELPS':'AVAILABLE ON HOUSE ASSIST'}</small><h3>${c?'Recommended for you':'Other house helps'}</h3></div><button type="button" class="dash-see-all" data-app-nav="guide">See all →</button></div><div class="grid ${S.lay=='list'?'list':''}">${l.slice(0,4).map(card(c)).join('')||'<p class="mut dash-empty">No registered house helps match your search yet.</p>'}</div></section>
+ <div class="dash-filters"><select id="sv"><option value="">All services</option>${['House Cleaning','Plumbing','Electrical','Mason','Painting','Repairs','Gardening','Lawn Care','Laundry','Ironing','Cooking','Kitchen Assist','Moving','Packing','Elderly Care','Child Care'].map(x=>`<option ${S.sv==x?'selected':''}>${x}</option>`).join('')}</select><select id="so"><option value="rating">Top rated</option><option value="low" ${S.sort=='low'?'selected':''}>Price: low to high</option><option value="high" ${S.sort=='high'?'selected':''}>Price: high to low</option></select></div>`);
  $('#q').oninput=e=>{S.q=e.target.value;const p=e.target.selectionStart;home();$('#q').focus();$('#q').setSelectionRange(p,p)};
  $('#sv').onchange=e=>{S.sv=e.target.value;home()};$('#so').onchange=e=>{S.sort=e.target.value;home()};enh($('#view'));
+ $('#view').querySelectorAll('[data-service]').forEach(b=>b.onclick=()=>{const value=b.dataset.service;if(value==='More')return go('guide');S.sv=value;home()});
 }
 const card=c=>(h,i)=>`<div class="card helper"><div style="display:flex;gap:12px;align-items:center"><div class="av" style="background:${COL[helpers.indexOf(h)%6]}">${ini(h.n)}</div><div><b>${h.n}</b><div class="mut">${h.l}</div></div></div>
  <div>${h.s.map(s=>`<span class="tag">${s}</span>`).join('')}</div>
