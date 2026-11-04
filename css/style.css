@@ -5772,13 +5772,15 @@ body:has(.ha-landing) { background:#f5f9fa; color:#17252b; }
 .ha-text-link { color:#075b70; font-size:11px; font-weight:700; text-decoration:none; }
 .ha-text-link span { margin-left:6px; }
 .ha-service-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:15px; }
-.ha-service-card { position:relative; display:flex; min-height:335px; overflow:hidden; flex-direction:column; justify-content:space-between; padding:17px; border:0; border-radius:9px; color:white; text-align:left; background-image:linear-gradient(0deg,rgba(20,27,20,.86),rgba(20,27,20,.06) 71%),var(--service-photo); background-position:center; background-size:cover; cursor:pointer; }
-.ha-service-card::after { position:absolute; inset:0; content:""; border:1px solid #fff2; border-radius:inherit; pointer-events:none; }
-.ha-service-card:hover { background-position:center 46%; }
-.ha-card-meta { position:relative; z-index:1; display:flex; align-items:center; gap:9px; color:#fff; font-size:9px; }
+.ha-service-card { position:relative; isolation:isolate; display:flex; min-height:335px; overflow:hidden; flex-direction:column; justify-content:space-between; padding:17px; border:0; border-radius:9px; color:white; text-align:left; background:#34576a; cursor:pointer; }
+.ha-service-card::before { position:absolute; z-index:1; inset:0; content:""; background:linear-gradient(0deg,rgba(20,27,20,.86),rgba(20,27,20,.06) 71%); pointer-events:none; }
+.ha-service-card::after { position:absolute; z-index:3; inset:0; content:""; border:1px solid #fff2; border-radius:inherit; pointer-events:none; }
+.ha-service-photo { position:absolute; z-index:0; inset:0; display:block; width:100%; height:100%; object-fit:cover; transition:transform .35s; }
+.ha-service-card:hover .ha-service-photo { transform:scale(1.035); }
+.ha-card-meta { position:relative; z-index:2; display:flex; align-items:center; gap:9px; color:#fff; font-size:9px; }
 .ha-card-meta i { font-size:8px; font-style:normal; font-weight:700; letter-spacing:.1em; }
 .ha-card-meta b { display:grid; width:25px; height:25px; margin-left:auto; place-items:center; border-radius:50%; color:#075b70; background:#fff; font-size:13px; }
-.ha-card-caption { position:relative; z-index:1; display:flex; flex-direction:column; align-items:flex-start; }
+.ha-card-caption { position:relative; z-index:2; display:flex; flex-direction:column; align-items:flex-start; }
 .ha-card-caption strong { font-family:Manrope,Arial,sans-serif; font-size:23px; letter-spacing:-.04em; }
 .ha-card-caption small { max-width:285px; margin:6px 0 17px; color:#f2f8f9; font-size:10px; line-height:1.6; }
 .ha-card-caption em { display:flex; width:100%; justify-content:space-between; align-items:center; padding:9px 12px; border:1px solid #ffffff80; border-radius:5px; font-size:9px; font-style:normal; font-weight:700; }
@@ -6432,6 +6434,7 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  #auth .auth-header { height:64px; padding:0 14px; }
  #auth .auth-stage { min-height:100svh; padding:74px 14px 30px; border-radius:0; overflow:visible; }
  #auth .auth-card.glass { padding:20px 17px 18px; }
+ #auth .auth-wordmark, #auth .auth-copy { display:none; }
 }
 @media screen and (min-width:701px) {
  #auth .auth-stage { display:grid; grid-template-columns:minmax(0,1fr) minmax(360px,.95fr); align-items:center; gap:clamp(26px,4.2vw,80px); height:auto; min-height:100svh; padding:96px clamp(30px,6vw,90px) 54px; overflow:visible; }
@@ -6446,6 +6449,13 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  #land.ha-landing .ha-kicker { margin-bottom:12px; }
  #land.ha-landing .ha-hero-copy { margin:10px 0 12px; }
  #land.ha-landing .ha-social-proof { margin-top:12px; }
+ #learn .lhero2 .wrap { padding-inline:16px; }
+ #learn .lhero2 .lnav { display:grid; grid-template-columns:40px repeat(2,minmax(0,1fr)); grid-template-areas:"brand home home" "brand login start"; gap:8px; align-items:center; padding:12px 0; }
+ #learn .lhero2 .lnav > .logo { grid-area:brand; align-self:center; }
+ #learn .lhero2 .lnav > .logo .bt, #learn .lhero2 .lnav > .sp { display:none; }
+ #learn .lhero2 .lnav > .btn.alt { grid-area:home; width:100%; min-height:44px; padding:8px 10px; font-size:13px; }
+ #learn .lhero2 .lnav > .lg { grid-area:login; display:flex; min-height:44px; align-items:center; justify-content:center; margin:0; padding:8px; font-size:13px; }
+ #learn .lhero2 .lnav > .btn:not(.alt) { grid-area:start; width:100%; min-height:44px; padding:8px 10px; font-size:13px; }
 }
 @media screen and (max-width:360px) {
  .ha-container { width:calc(100% - 24px); }
