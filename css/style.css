@@ -6175,7 +6175,8 @@ body:has(#auth:not(.hide)) { min-height:100vh; background:linear-gradient(135deg
 /* The auth panel follows the reference's translucent sea-blue glass treatment. */
 #auth .auth-stage { overflow:visible; }
 #auth .auth-backdrop, #auth .auth-colorwash { border-radius:inherit; }
-#auth .auth-card.glass { max-height:none; overflow:visible; color:#f7fbfc; background:rgba(18,57,73,.58); border-color:rgba(255,255,255,.55); box-shadow:0 20px 50px rgba(13,33,44,.32); -webkit-backdrop-filter:blur(20px) saturate(135%); backdrop-filter:blur(20px) saturate(135%); }
+#auth .auth-card.glass { max-height:none; overflow:visible; color:#f7fbfc; background:linear-gradient(135deg,rgba(255,255,255,.18),rgba(255,255,255,.055) 48%,rgba(255,255,255,.12)),rgba(213,241,247,.11); border-color:rgba(255,255,255,.62); box-shadow:0 20px 50px rgba(13,33,44,.2),inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(255,255,255,.1); -webkit-backdrop-filter:blur(20px) saturate(175%); backdrop-filter:blur(20px) saturate(175%); }
+#auth .auth-card-head h2, #auth .auth-card-head .auth-kicker, #auth .auth-card-head .gs, #auth .auth-field, #auth .auth-field-label, #auth .auth-remember, #auth .auth-remember label, #auth .auth-switch-copy, #auth .auth-home-link a { text-shadow:0 1px 4px rgba(5,30,41,.38); }
 #auth .auth-card-head .auth-kicker, #auth .auth-card-head .gs { color:rgba(242,249,251,.78); }
 #auth .auth-card-head h2 { color:#fff; }
 #auth .auth-card-spark { color:#fff; background:rgba(255,255,255,.15); }
