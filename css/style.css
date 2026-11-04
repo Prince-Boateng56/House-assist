@@ -6436,6 +6436,14 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  #auth .auth-form-side.formside { position:relative; top:auto; right:auto; width:100%; max-width:460px; max-height:none; margin:0; transform:none; justify-self:end; overflow:visible; }
  #auth .auth-card.glass { max-height:none; overflow:visible; }
 }
+@media screen and (max-width:600px) {
+ #land.ha-landing .ha-hero-wrap { width:100%; max-width:none; margin:0; padding:0; }
+ #land.ha-landing .ha-hero { width:100%; min-height:0; border-radius:0; }
+ #land.ha-landing .ha-hero-content { padding:48px 18px 16px; }
+ #land.ha-landing .ha-kicker { margin-bottom:12px; }
+ #land.ha-landing .ha-hero-copy { margin:10px 0 12px; }
+ #land.ha-landing .ha-social-proof { margin-top:12px; }
+}
 @media screen and (max-width:360px) {
  .ha-container { width:calc(100% - 24px); }
  .ha-brand { gap:6px; }
