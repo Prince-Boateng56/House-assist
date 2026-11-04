@@ -6437,7 +6437,7 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  #auth .auth-card.glass { max-height:none; overflow:visible; }
 }
 @media screen and (max-width:600px) {
- #land.ha-landing .ha-hero-wrap { width:100%; max-width:none; margin:0; padding:0; }
+ #land.ha-landing .ha-hero-wrap { width:100vw; max-width:none; margin-inline:calc(50% - 50vw); padding:0; }
  #land.ha-landing .ha-hero { width:100%; min-height:0; border-radius:0; }
  #land.ha-landing .ha-hero-content { padding:48px 18px 16px; }
  #land.ha-landing .ha-kicker { margin-bottom:12px; }
