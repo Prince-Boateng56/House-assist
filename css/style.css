@@ -6411,9 +6411,9 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 }
 
 /* Keep the auth backdrop wordmark centered and fully inside its frame. */
-#auth .auth-wordmark { top:12px; left:50%; width:100%; max-width:100%; padding:0 18px; transform:translateX(-50%); font-size:clamp(32px,8vw,116px); letter-spacing:-.075em; line-height:1; text-align:center; box-sizing:border-box; }
+#auth .auth-wordmark { top:12px; left:50%; width:100%; max-width:100%; padding:0 18px; transform:translateX(-50%); font-size:clamp(42px,13.6vw,184px); letter-spacing:-.075em; line-height:1; text-align:center; box-sizing:border-box; }
 @media screen and (max-width:600px) {
- #auth .auth-wordmark { top:10px; padding-inline:14px; font-size:clamp(30px,9vw,46px); }
+ #auth .auth-wordmark { top:10px; padding-inline:14px; font-size:clamp(40px,12vw,72px); }
 }
 @media screen and (max-width:360px) {
  .ha-container { width:calc(100% - 24px); }
