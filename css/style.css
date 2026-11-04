@@ -6430,6 +6430,12 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  #auth .auth-stage { min-height:100svh; padding:74px 14px 30px; border-radius:0; overflow:visible; }
  #auth .auth-card.glass { padding:20px 17px 18px; }
 }
+@media screen and (min-width:701px) {
+ #auth .auth-stage { display:grid; grid-template-columns:minmax(0,1fr) minmax(360px,.95fr); align-items:center; gap:clamp(26px,4.2vw,80px); height:auto; min-height:100svh; padding:96px clamp(30px,6vw,90px) 54px; overflow:visible; }
+ #auth .auth-copy { position:relative; top:auto; left:auto; width:min(100%,560px); margin:0; transform:none; }
+ #auth .auth-form-side.formside { position:relative; top:auto; right:auto; width:100%; max-width:460px; max-height:none; margin:0; transform:none; justify-self:end; overflow:visible; }
+ #auth .auth-card.glass { max-height:none; overflow:visible; }
+}
 @media screen and (max-width:360px) {
  .ha-container { width:calc(100% - 24px); }
  .ha-brand { gap:6px; }
