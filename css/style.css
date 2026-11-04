@@ -5732,7 +5732,9 @@ body:has(.ha-landing) { background:#f5f9fa; color:#17252b; }
 .ha-hero-wrap { padding-top:6px; }
 .ha-hero { position:relative; min-height:630px; overflow:hidden; border-radius:15px; color:white; background:#34576a; }
 .ha-hero-photo { position:absolute; inset:0; background-image:linear-gradient(90deg,rgba(21,28,23,.79),rgba(25,31,25,.58) 41%,rgba(25,31,25,.08) 76%),linear-gradient(0deg,rgba(19,26,20,.29),transparent 50%),url('../images/slide-01-cleaners-living-room.jpg'); background-position:center,center,center 44%; background-size:cover; }
-.ha-hero-content { position:relative; z-index:1; width:min(680px,62%); padding:96px 0 48px clamp(28px,6vw,80px); }
+.ha-hero::before { position:absolute; z-index:1; inset:0; content:""; background-image:url('../components/ui/dot-pattern.svg'); background-repeat:repeat; background-size:16px 16px; opacity:.42; pointer-events:none; -webkit-mask-image:radial-gradient(circle 300px at center,#000 0%,transparent 100%); mask-image:radial-gradient(circle 300px at center,#000 0%,transparent 100%); }
+.ha-hero-photo { z-index:0; }
+.ha-hero-content { position:relative; z-index:2; width:min(680px,62%); padding:96px 0 48px clamp(28px,6vw,80px); }
 .ha-kicker { display:flex; align-items:center; gap:9px; margin:0 0 19px; color:#eaf4f6; font-size:9px; font-weight:700; letter-spacing:.17em; }
 .ha-kicker > span { width:21px; height:1px; background:#cce2e8; }
 .ha-hero h1 { max-width:650px; margin:0; color:white; font-family:Manrope,Arial,sans-serif; font-size:clamp(45px,6vw,76px); font-weight:700; letter-spacing:-.07em; line-height:.99; }
@@ -5753,7 +5755,7 @@ body:has(.ha-landing) { background:#f5f9fa; color:#17252b; }
 .ha-social-proof b, .ha-social-proof small { display:block; }
 .ha-social-proof b { color:#fff; font-size:10px; }
 .ha-social-proof small { margin-top:2px; color:#e0eef1; font-size:9px; }
-.ha-hero-chip { position:absolute; right:32px; bottom:33px; display:flex; align-items:center; gap:11px; padding:13px 17px; border:1px solid #ffffff65; border-radius:8px; background:#f4fafbe8; color:#253e47; box-shadow:0 6px 25px #18211933; }
+.ha-hero-chip { position:absolute; z-index:3; right:32px; bottom:33px; display:flex; align-items:center; gap:11px; padding:13px 17px; border:1px solid #ffffff65; border-radius:8px; background:#f4fafbe8; color:#253e47; box-shadow:0 6px 25px #18211933; }
 .ha-hero-chip > span { display:grid; width:32px; height:32px; place-items:center; border-radius:50%; color:white; background:var(--ha-sage); font-size:19px; }
 .ha-hero-chip b { font-size:10px; line-height:1.5; }
 .ha-hero-chip small { color:#718087; font-size:9px; font-weight:500; }
