@@ -81,12 +81,22 @@ const open=o=>{$('#drawer').classList.toggle('open',o);$('#scrim').classList.tog
 $('#bg').onclick=()=>open(true);$('#scrim').onclick=()=>open(false);
 $('#drawer').onclick=e=>{const k=e.target.closest('a')?.dataset.k;if(!k)return;open(false);
  if(k=='sos')return sos();if(k=='out')return location.reload();go(k)};
-function go(v){S.view=v;drawer();({home,guide,hired,messages,profile,admin})[v]();scrollTo(0,0)}
+function syncDashboardNav(view){
+ const nav=document.querySelector('.app-bottom-nav');if(!nav)return;
+ const buttons=[...nav.querySelectorAll('button[data-app-nav]')];
+ if(!buttons.some(button=>button.dataset.appNav===view))return;
+ nav.dataset.active=view;
+ buttons.forEach(button=>{
+  const active=button.dataset.appNav===view;
+  button.classList.toggle('on',active);
+  if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+ });
+}
+function go(v){S.view=v;syncDashboardNav(v);drawer();({home,guide,hired,messages,profile,admin})[v]();scrollTo(0,0)}
 document.addEventListener('click',e=>{
  const b=e.target.closest('[data-app-nav]');
  if(!b||$('#app').classList.contains('hide'))return;
  e.preventDefault();
- document.querySelectorAll('[data-app-nav]').forEach(x=>x.classList.toggle('on',x===b));
  go(b.dataset.appNav);
 });
 

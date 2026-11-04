@@ -6467,3 +6467,17 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  .ha-hero-content { padding-inline:15px; }
  .ha-hero h1 { font-size:28px; }
 }
+
+/* Floating liquid-glass dashboard navigation for phones and small tablets. */
+@media screen and (max-width:820px) {
+ #app .app-bottom-nav { position:fixed; right:auto; bottom:calc(12px + env(safe-area-inset-bottom)); left:50%; z-index:50; display:grid; width:min(460px,calc(100vw - 24px)); height:74px; grid-template-columns:repeat(4,minmax(0,1fr)); gap:2px; padding:8px; overflow:hidden; transform:translateX(-50%); border:1px solid rgba(255,255,255,.72); border-radius:25px; background:rgba(237,248,250,.52); box-shadow:0 12px 34px rgba(15,48,59,.2),inset 0 1px 0 rgba(255,255,255,.74),inset 0 -1px 0 rgba(255,255,255,.22); -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%); }
+ #app .app-bottom-nav::before { position:absolute; z-index:0; top:7px; bottom:7px; left:9px; width:calc((100% - 24px)/4); content:""; border:1px solid rgba(255,255,255,.48); border-radius:19px; background:linear-gradient(145deg,rgba(11,113,133,.96),rgba(7,91,112,.9)); box-shadow:0 5px 16px rgba(7,91,112,.2),inset 0 1px 0 rgba(255,255,255,.32); transform:translateX(0); transition:transform .38s cubic-bezier(.2,.9,.2,1); pointer-events:none; }
+ #app .app-bottom-nav[data-active="guide"]::before { transform:translateX(calc(100% + 2px)); }
+ #app .app-bottom-nav[data-active="messages"]::before { transform:translateX(calc(200% + 4px)); }
+ #app .app-bottom-nav[data-active="profile"]::before { transform:translateX(calc(300% + 6px)); }
+ #app .app-bottom-nav button { position:relative; z-index:1; display:flex; min-width:0; min-height:0; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:7px 3px; border:0; border-radius:18px; color:#47636d; background:transparent; font-size:21px; line-height:1; transition:color .2s,transform .2s; }
+ #app .app-bottom-nav button.on { color:#fff; background:transparent; }
+ #app .app-bottom-nav button span { line-height:1; }
+ #app .app-bottom-nav button small { color:inherit; font-size:10px; font-weight:700; line-height:1.1; }
+ #app .app-bottom-nav button:focus-visible { outline:2px solid #fff; outline-offset:-3px; }
+}
