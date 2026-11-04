@@ -6201,6 +6201,9 @@ body:has(#land.ha-landing:not(.hide)) { background:#fff; }
 #land.ha-landing { position:relative; isolation:isolate; overflow:visible; background:transparent; }
 #land > .ha-kinetic-grid { position:fixed; z-index:0; inset:0; display:block; width:100vw; height:100vh; height:100dvh; pointer-events:none; }
 #land > .ha-header, #land > main, #land > .ha-footer { position:relative; z-index:1; }
+@media screen and (max-width:800px) {
+ #land > .ha-header { z-index:20; }
+}
 .ha-header { background:transparent; }
 .ha-faq-band { background:rgba(234,244,246,.78); }
 .ha-footer { background:rgba(247,250,251,.88); }
