@@ -6194,3 +6194,207 @@ body:has(#auth:not(.hide)) { min-height:100vh; background:linear-gradient(135deg
 #auth .auth-google.btn { color:#f7fbfc; border-color:rgba(255,255,255,.42); background:rgba(255,255,255,.11); }
 #auth .auth-error { color:#ffd7ce !important; }
 #auth .auth-switch-copy, #auth .auth-home-link a { color:rgba(242,248,250,.78); }
+
+/* Phone layout: use the available viewport width and comfortable touch sizing. */
+html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+@media screen and (max-width:600px) {
+ body { min-width:320px; overflow-x:hidden; }
+ #land, #auth, #app { width:100%; max-width:100%; }
+ #land *, #auth *, #app * { min-width:0; }
+
+ /* Landing page */
+ .ha-container { width:calc(100% - 32px); }
+ .ha-nav { height:68px; gap:8px; }
+ .ha-brand { gap:8px; }
+ .ha-brand .ha-mark { width:36px; height:36px; font-size:21px; }
+ .ha-brand b { font-size:13px; }
+ .ha-brand small { font-size:8px; letter-spacing:.08em; }
+ .ha-navactions { gap:8px; }
+ .ha-navactions .ha-button { min-height:44px; padding:0 12px; font-size:12px; }
+ .ha-menu { display:grid; width:44px; height:44px; flex:none; place-items:center; padding:0; }
+ .ha-hero-wrap { padding-top:0; }
+ .ha-hero { min-height:clamp(650px,calc(100svh - 80px),740px); border-radius:12px; }
+ .ha-hero-content { width:100%; padding:76px 18px 34px; }
+ .ha-kicker { gap:7px; margin-bottom:15px; font-size:9px; letter-spacing:.12em; }
+ .ha-hero h1 { max-width:100%; font-size:clamp(36px,9.6vw,43px); line-height:1.05; letter-spacing:-.055em; }
+ .ha-hero-copy { max-width:34ch; margin:15px 0 18px; font-size:14px; line-height:1.6; }
+ .ha-search { width:100%; padding:6px; border-radius:9px; }
+ .ha-search label { min-height:54px; padding:7px 10px; }
+ .ha-search label small { font-size:11px; }
+ .ha-search select { min-height:26px; font-size:16px; }
+ .ha-search .ha-button { min-height:48px; margin-top:4px; font-size:14px; }
+ .ha-social-proof { gap:10px; margin-top:18px; }
+ .ha-avatar-stack i { width:31px; height:31px; font-size:8px; }
+ .ha-social-proof b { font-size:12px; }
+ .ha-social-proof small { font-size:11px; }
+ .ha-hero-chip { right:12px; bottom:12px; gap:9px; padding:10px 12px; transform:none; }
+ .ha-hero-chip > span { width:30px; height:30px; }
+ .ha-hero-chip b { font-size:11px; }
+ .ha-hero-chip small { font-size:10px; }
+ .ha-intro-row { padding-top:44px; }
+ .ha-intro-row h2, .ha-section-title h2, .ha-services-more h2, .ha-about-copy h2, .ha-faq h2 { font-size:clamp(27px,7.4vw,34px); line-height:1.12; }
+ .ha-intro-row > p, .ha-services-more > div:first-child > p:last-child, .ha-about-copy > p:not(.ha-kicker), .ha-faq-heading > p:not(.ha-kicker) { font-size:14px; line-height:1.7; }
+ .ha-services { padding-top:38px; padding-bottom:54px; }
+ .ha-section-title { display:block; margin-bottom:18px; }
+ .ha-section-title .ha-text-link { display:inline-flex; min-height:44px; align-items:center; margin-top:8px; white-space:normal; font-size:13px; }
+ .ha-service-grid { grid-template-columns:minmax(0,1fr); gap:14px; }
+ .ha-service-card { min-height:clamp(280px,76vw,340px); padding:19px; border-radius:12px; }
+ .ha-card-meta { font-size:11px; }
+ .ha-card-meta i { font-size:10px; }
+ .ha-card-meta b { width:32px; height:32px; }
+ .ha-card-caption strong { font-size:25px; }
+ .ha-card-caption small { font-size:13px; line-height:1.55; }
+ .ha-card-caption em { min-height:44px; font-size:12px; }
+ .ha-services-more { gap:12px; padding-top:18px; padding-bottom:52px; }
+ .ha-service-tags { gap:0 14px; }
+ .ha-service-tags button { min-height:48px; padding:11px 1px; font-size:13px; }
+ .ha-faq-band { padding:52px 0; }
+ .ha-about-grid, .ha-faq { gap:22px; }
+ .ha-about-photo, .ha-about-photo img { min-height:0; height:clamp(260px,78vw,340px); }
+ .ha-about-photo > span { font-size:9px; }
+ .ha-about-points > div { gap:12px; padding:14px 0; }
+ .ha-about-points > div > b { font-size:11px; }
+ .ha-about-points strong { font-size:13px; }
+ .ha-about-points small { font-size:11px; }
+ .ha-faq { padding-top:48px; padding-bottom:52px; }
+ .ha-faq-heading > a, .ha-questions summary { font-size:14px; }
+ .ha-questions summary { min-height:52px; padding:14px 0; }
+ .ha-questions details p { margin-bottom:16px; font-size:13px; line-height:1.65; }
+ .ha-final-cta { gap:18px; margin-bottom:42px; padding:25px 20px; border-radius:12px; }
+ .ha-final-cta h2 { font-size:clamp(25px,7vw,32px); }
+ .ha-final-cta > div > p:last-child { font-size:14px; line-height:1.6; }
+ .ha-final-cta > div:last-child { display:grid; width:100%; gap:10px; }
+ .ha-final-cta .ha-button { width:100%; min-height:48px; font-size:14px; }
+ .ha-footer { padding:27px 0 16px; }
+ .ha-footer-main { gap:18px; padding-bottom:20px; }
+ .ha-footer-main > p, .ha-footer nav a, .ha-footer-mail { font-size:13px; }
+ .ha-footer nav { gap:16px; }
+ .ha-footer-bottom { gap:9px; padding-top:13px; font-size:11px; line-height:1.5; }
+
+ /* Login and signup */
+ #auth.auth-page { min-height:100svh; padding:0 10px max(10px,env(safe-area-inset-bottom)); }
+ #auth .auth-header { width:100%; height:64px; gap:7px; }
+ #auth .auth-brand { gap:7px; }
+ #auth .auth-brand-mark { width:34px; height:34px; font-size:19px; }
+ #auth .auth-brand b { font-size:11px; }
+ #auth .auth-brand small { font-size:7px; letter-spacing:.07em; }
+ #auth .auth-header nav { gap:9px; }
+ #auth .auth-header nav a { font-size:10px; }
+ #auth .auth-header-dot { display:none; }
+ #auth .auth-stage { min-height:0; padding:18px 14px 54px; border-radius:12px; }
+ #auth .auth-wordmark { top:5px; left:8px; font-size:14vw; }
+ #auth .auth-copy { padding:24px 4px 20px; }
+ #auth .auth-copy .auth-kicker { margin-bottom:12px; font-size:9px; }
+ #auth .auth-copy h1 { font-size:clamp(39px,10vw,50px); line-height:.98; }
+ #auth .auth-copy > p:not(.auth-kicker) { max-width:36ch; margin:12px 0 14px; font-size:14px; line-height:1.55; }
+ #auth .auth-apply { min-height:44px; padding:10px 13px; font-size:13px; }
+ #auth .auth-copy-foot { margin-top:13px; font-size:12px; }
+ #auth .auth-card.glass { padding:20px 17px 18px; border-radius:13px; }
+ #auth .auth-card-head { gap:9px; margin-bottom:17px; }
+ #auth .auth-card-head .auth-kicker { font-size:10px; }
+ #auth .auth-card-head h2 { font-size:26px; }
+ #auth .auth-card-head .gs { font-size:13px; line-height:1.45; }
+ #auth .auth-card-spark { width:36px; height:36px; }
+ #auth .auth-role-switch, #auth .auth-mode-switch { gap:5px; padding:5px; border-radius:8px; }
+ #auth .auth-role-switch { margin-bottom:10px; }
+ #auth .auth-mode-switch { margin-bottom:17px; }
+ #auth .auth-role-switch button, #auth .auth-mode-switch button { min-height:46px; padding:8px 5px; font-size:12px; }
+ #auth .auth-field, #auth .auth-field-label { margin-bottom:13px; font-size:12px; }
+ #auth .auth-field input, #auth .auth-field select, #auth .auth-password input, #auth #svcBox > button { min-height:48px; margin-top:6px; padding-inline:12px; border-radius:7px; font-size:16px; }
+ #auth .auth-password.pwrap { margin:6px 0 11px; }
+ #auth .auth-password #eye { top:6px; right:4px; min-width:50px; height:36px; font-size:12px; }
+ #auth .auth-remember.rm { margin:10px 0 15px; font-size:12px; }
+ #auth .auth-remember label, #auth .auth-remember a { font-size:12px; }
+ #auth .auth-remember input { width:18px; height:18px; }
+ #auth .auth-submit.btn { min-height:50px; padding:0 15px; border-radius:7px; font-size:14px; }
+ #auth .auth-google.btn { min-height:48px; margin-top:10px; font-size:13px; }
+ #auth .auth-error, #auth .auth-switch-copy, #auth .auth-home-link a { font-size:12px !important; line-height:1.5; }
+ #auth .auth-home-link { margin-top:12px; }
+ #auth .auth-caption { display:none; }
+ #auth .auth-bottom { min-height:44px; justify-content:center; padding:8px 4px 0; font-size:11px; text-align:center; }
+
+ /* Customer and house-help dashboards */
+ #app { min-height:100svh; padding-bottom:calc(70px + env(safe-area-inset-bottom)); overflow-x:clip; }
+ #app > header { height:64px; min-height:64px; padding:0 12px; }
+ #app > header .logo { gap:7px; }
+ #app > header .logo .mark { width:32px; height:32px; }
+ #app > header .logo .sn { font-size:13px; }
+ #app > header .logo small, #app .app-brand-copy small { font-size:9px; line-height:1.3; }
+ #app > header .burger { width:44px; height:44px; }
+ #app > header .pill { max-width:46vw; padding:7px 9px; font-size:11px; overflow-wrap:anywhere; }
+ #app main { width:100%; max-width:none; min-height:calc(100svh - 64px); margin:0; padding:21px 16px calc(96px + env(safe-area-inset-bottom)); }
+ #app .dashboard-view { width:100%; max-width:none; }
+ #app .dash-topline { gap:10px; margin-bottom:17px; }
+ #app .dash-kicker { font-size:10px; line-height:1.4; letter-spacing:.1em; }
+ #app .dash-topline h2 { margin:7px 0 6px; font-size:clamp(25px,7vw,29px); line-height:1.12; }
+ #app .dash-topline .sub { max-width:none; font-size:14px; line-height:1.55; }
+ #app .dash-bell { width:44px; height:44px; }
+ #app .dash-search { min-height:54px; gap:9px; margin-bottom:18px; padding:5px 7px 5px 13px; }
+ #app .dash-search input { min-height:42px; font-size:16px; }
+ #app .dash-search .dash-filter { width:42px; height:42px; flex:none; }
+ #app .dash-promo { min-height:0; padding:20px 17px; gap:10px; border-radius:12px; }
+ #app .dash-promo > div:first-child { min-width:0; max-width:none; }
+ #app .dash-promo small { font-size:10px; line-height:1.4; }
+ #app .dash-promo h3 { max-width:100%; margin:7px 0; font-size:24px; line-height:1.12; }
+ #app .dash-promo p { max-width:100%; margin-bottom:13px; font-size:14px; line-height:1.5; }
+ #app .dash-promo .btn { min-height:44px; padding:10px 13px; font-size:13px; }
+ #app .dash-promo-art { width:54px; height:54px; flex:none; margin:0; font-size:26px; }
+ #app .dash-section { margin-top:25px; }
+ #app .dash-section-head { align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:13px; }
+ #app .dash-section-head h3 { margin-top:4px; font-size:19px; line-height:1.2; }
+ #app .dash-see-all { min-height:40px; font-size:12px; }
+ #app .dash-services { grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px 5px; }
+ #app .dash-service { gap:6px; padding:5px 1px; }
+ #app .dash-service span { width:44px; height:44px; border-radius:13px; font-size:20px; }
+ #app .dash-service small { overflow:visible; min-height:28px; font-size:11px; line-height:1.25; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; }
+ #app .dash-sort-label { flex-wrap:wrap; gap:7px; font-size:12px; }
+ #app .dash-sort-label select, #app .dash-sort-label .dd > button, #app .dash-filters select, #app .dash-filters .dd > button { min-height:44px; font-size:14px; }
+ #app .helper-feature-grid { grid-auto-columns:minmax(88%,1fr); gap:12px; }
+ #app .helper-feature-photo { height:clamp(190px,58vw,230px); }
+ #app .helper-feature-body { padding:15px; }
+ #app .helper-feature-person > div:nth-child(2) b { font-size:14px; }
+ #app .helper-feature-person > div:nth-child(2) small, #app .helper-rating-pill { font-size:11px; }
+ #app .helper-feature-tags { flex-wrap:wrap; gap:7px; margin:12px 0; }
+ #app .helper-feature-tags span { padding:6px 9px; font-size:11px; }
+ #app .helper-feature-bottom > strong { font-size:16px; }
+ #app .helper-feature-bottom > strong small { font-size:11px; }
+ #app .helper-feature-bottom button { min-height:44px; padding:9px 11px; font-size:12px; }
+ #app .helper-compact-grid { grid-template-columns:minmax(0,1fr); gap:10px; }
+ #app .helper-compact-card { grid-template-columns:44px minmax(0,1fr) 40px; gap:9px; padding:13px; }
+ #app .helper-compact-card > .av { width:42px; height:42px; }
+ #app .helper-compact-person b { font-size:13px; }
+ #app .helper-compact-person small { font-size:11px; white-space:normal; line-height:1.35; }
+ #app .helper-compact-card .helper-rating-pill { font-size:11px; }
+ #app .helper-compact-card > strong { font-size:13px; }
+ #app .helper-compact-card > strong small { font-size:10px; }
+ #app .helper-compact-card > button { width:40px; height:40px; }
+ #app .helper-overview { gap:16px; padding:17px; }
+ #app .helper-overview-copy h3 { font-size:21px; }
+ #app .helper-overview-copy > p { font-size:13px; line-height:1.5; }
+ #app .helper-tags { gap:7px; }
+ #app .helper-tags span { padding:7px 9px; font-size:11px; }
+ #app .helper-overview-copy .btn { min-height:44px; padding:10px 13px; font-size:12px; }
+ #app .helper-stat-grid { gap:6px; }
+ #app .helper-stat-grid > div { min-width:0; min-height:100px; padding:10px 8px; overflow-wrap:anywhere; }
+ #app .helper-stat-grid small { font-size:10px; line-height:1.3; }
+ #app .helper-stat-grid b { margin:9px 0 5px; font-size:15px; }
+ #app .helper-stat-grid em { font-size:9px; line-height:1.3; }
+ #app .helper-tips { gap:10px; }
+ #app .helper-tips article { min-height:0; padding:16px; }
+ #app .helper-tips article > span { margin-bottom:9px; font-size:10px; }
+ #app .helper-tips b { font-size:13px; }
+ #app .helper-tips p, #app .helper-requests .grid > .card .mut { font-size:13px; line-height:1.55; }
+ #app .helper-requests > h2 { font-size:22px; }
+ #app .helper-requests > .sub { font-size:13px; line-height:1.5; }
+ #app .helper-requests .grid { grid-template-columns:minmax(0,1fr); }
+ #app .helper-requests .grid > .card { padding:16px; }
+ #app .helper-requests .grid > .card > b { font-size:14px; }
+ #app .helper-requests .grid > .card .btn { min-height:44px; padding:10px 12px; font-size:13px; }
+ #app .dash-filters { gap:10px; }
+ #app .dash-filters label { flex-wrap:wrap; gap:7px; font-size:12px; }
+ #app .app-bottom-nav { height:calc(68px + env(safe-area-inset-bottom)); padding:7px 10px max(7px,env(safe-area-inset-bottom)); }
+ #app .app-bottom-nav button { min-height:48px; gap:3px; font-size:22px; }
+ #app .app-bottom-nav small { font-size:11px; }
+ #drawer { width:min(288px,88vw); max-width:88vw; }
+ #drawer a { min-height:48px; font-size:14px; }
+}
