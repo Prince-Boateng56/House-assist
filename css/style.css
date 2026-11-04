@@ -6198,26 +6198,27 @@ body:has(#auth:not(.hide)) { min-height:100vh; background:linear-gradient(135deg
 /* Phone layout: use the available viewport width and comfortable touch sizing. */
 html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 @media screen and (max-width:600px) {
- body { min-width:320px; overflow-x:hidden; }
+ body { min-width:0; overflow-x:hidden; }
  #land, #auth, #app { width:100%; max-width:100%; }
  #land *, #auth *, #app * { min-width:0; }
 
  /* Landing page */
- .ha-container { width:calc(100% - 32px); }
+ .ha-container { width:calc(100% - 28px); }
  .ha-nav { height:68px; gap:8px; }
- .ha-brand { gap:8px; }
+ .ha-brand { min-width:0; gap:8px; white-space:nowrap; }
  .ha-brand .ha-mark { width:36px; height:36px; font-size:21px; }
  .ha-brand b { font-size:13px; }
- .ha-brand small { font-size:8px; letter-spacing:.08em; }
- .ha-navactions { gap:8px; }
- .ha-navactions .ha-button { min-height:44px; padding:0 12px; font-size:12px; }
+ .ha-brand small { display:none; }
+ .ha-navactions { flex:none; gap:8px; margin-left:auto; }
+ .ha-navactions .ha-button { min-height:44px; gap:7px; padding:0 11px; font-size:12px; white-space:nowrap; }
  .ha-menu { display:grid; width:44px; height:44px; flex:none; place-items:center; padding:0; }
  .ha-hero-wrap { padding-top:0; }
- .ha-hero { min-height:clamp(650px,calc(100svh - 80px),740px); border-radius:12px; }
- .ha-hero-content { width:100%; padding:76px 18px 34px; }
+ .ha-hero { min-height:680px; border-radius:12px; background-color:#24495a; background-image:linear-gradient(180deg,rgba(17,31,37,.2) 0%,rgba(17,31,37,.34) 34%,rgba(12,41,53,.9) 100%),url('../images/slide-01-cleaners-living-room.jpg'); background-position:center,68% center; background-size:cover,cover; background-repeat:no-repeat,no-repeat; }
+ .ha-hero-photo { display:none; }
+ .ha-hero-content { width:100%; padding:74px 18px 24px; }
  .ha-kicker { gap:7px; margin-bottom:15px; font-size:9px; letter-spacing:.12em; }
- .ha-hero h1 { max-width:100%; font-size:clamp(36px,9.6vw,43px); line-height:1.05; letter-spacing:-.055em; }
- .ha-hero-copy { max-width:34ch; margin:15px 0 18px; font-size:14px; line-height:1.6; }
+ .ha-hero h1 { max-width:100%; font-size:clamp(28px,8.5vw,36px); line-height:1.07; letter-spacing:-.06em; }
+ .ha-hero-copy { max-width:34ch; margin:14px 0 17px; font-size:14px; line-height:1.55; }
  .ha-search { width:100%; padding:6px; border-radius:9px; }
  .ha-search label { min-height:54px; padding:7px 10px; }
  .ha-search label small { font-size:11px; }
@@ -6227,7 +6228,7 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  .ha-avatar-stack i { width:31px; height:31px; font-size:8px; }
  .ha-social-proof b { font-size:12px; }
  .ha-social-proof small { font-size:11px; }
- .ha-hero-chip { right:12px; bottom:12px; gap:9px; padding:10px 12px; transform:none; }
+ .ha-hero-chip { display:none; }
  .ha-hero-chip > span { width:30px; height:30px; }
  .ha-hero-chip b { font-size:11px; }
  .ha-hero-chip small { font-size:10px; }
@@ -6397,4 +6398,14 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  #app .app-bottom-nav small { font-size:11px; }
  #drawer { width:min(288px,88vw); max-width:88vw; }
  #drawer a { min-height:48px; font-size:14px; }
+}
+@media screen and (max-width:360px) {
+ .ha-container { width:calc(100% - 24px); }
+ .ha-brand { gap:6px; }
+ .ha-brand .ha-mark { width:32px; height:32px; font-size:19px; }
+ .ha-brand b { font-size:11px; }
+ .ha-navactions .ha-button { min-height:42px; gap:5px; padding:0 8px; font-size:11px; }
+ .ha-menu { width:40px; height:42px; }
+ .ha-hero-content { padding-inline:15px; }
+ .ha-hero h1 { font-size:28px; }
 }
