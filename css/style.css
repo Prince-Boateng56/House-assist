@@ -6425,7 +6425,7 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 #auth .auth-brand { color:#fff; }
 #auth .auth-brand small { color:rgba(255,255,255,.76); }
 #auth .auth-header nav a { color:#fff; text-shadow:0 1px 5px rgba(11,32,42,.55); }
-#auth .auth-stage { width:100%; min-height:100svh; flex:none; margin:0; border:0; border-radius:0; box-shadow:none; }
+#auth .auth-stage { width:100%; max-width:none; min-height:100svh; flex:none; margin:0; border:0; border-radius:0; box-shadow:none; }
 #auth .auth-card.glass { background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.035) 48%,rgba(255,255,255,.08)),rgba(8,48,65,.2); border-color:rgba(255,255,255,.58); box-shadow:0 20px 50px rgba(13,33,44,.14),inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(255,255,255,.1); -webkit-backdrop-filter:blur(10px) saturate(150%); backdrop-filter:blur(10px) saturate(150%); }
 #auth .auth-bottom { display:none; }
 @media screen and (max-width:700px) {
