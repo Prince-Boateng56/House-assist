@@ -269,7 +269,8 @@
     if (!brand) return;
     S.site = brand.name;
     document.querySelectorAll('.sn').forEach(x => x.textContent = brand.name);
-    document.querySelectorAll('.mark').forEach(x => x.textContent = brand.mark);
+    document.querySelectorAll('.ha-brand b, .auth-brand b').forEach(x => x.textContent = brand.name.toUpperCase());
+    document.querySelectorAll('.mark, .ha-mark, .auth-brand-mark').forEach(x => x.textContent = brand.mark);
     document.title = brand.name;
     document.querySelector('link[rel="icon"]')?.remove();
     const icon = document.createElement('link'); icon.rel = 'icon';
@@ -326,6 +327,7 @@
     try {
       const hires = await request('/helper/hires');
       const box = document.createElement('section');
+      box.className = 'helper-requests dash-section';
       box.innerHTML = `<h2 style="margin-top:28px">Hire requests</h2><p class="sub">Confirm receipt after you have received payment.</p><div class="grid">${hires.map(h => `<div class="card"><b>${h.customer}</b><div class="mut">${h.location} · GH₵ ${h.price}/day</div><div class="mut" style="margin:8px 0">${h.customer_paid ? 'Customer marked payment as sent' : 'Waiting for customer payment confirmation'} · ${h.payment_method}</div>${h.customer_paid && !h.helper_received ? `<button class="btn" data-received="${h.id}">Confirm received</button>` : h.helper_received ? '<span class="pill">Confirmed</span>' : ''}</div>`).join('') || '<p class="mut">No hire requests yet.</p>'}</div>`;
       $('#view').append(box);
       box.onclick = async e => {

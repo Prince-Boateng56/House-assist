@@ -1,7 +1,7 @@
 /* House Assist | app logic: pages, listings, profiles, messages, slideshow and motion */
 
 const $=s=>document.querySelector(s),H=(n,x)=>{n.innerHTML=x};
-const COL=['#F2B632','#8EC5F0','#F4A58A','#B7C7F2','#A9C2FF','#E6B3D9'];
+const COL=['#d8eaf0','#b9d9e2','#eaf4f6','#a6cbd7','#c6e0e7','#8ebdca'];
 let helpers=[];
 let S={role:'customer',mode:'login',user:null,view:'home',lay:'grid',dense:false,site:'House Assist',hired:[],q:'',sv:'',sort:'rating'};
 const stars=n=>'★'.repeat(n)+'☆'.repeat(5-n);
@@ -17,7 +17,7 @@ const releaseLoadingButton=button=>{
 };
 document.addEventListener('click',e=>{
  const button=e.target.closest('button');
- if(!button||button.disabled||button.classList.contains('is-loading'))return;
+ if(!button||button.closest('.ha-landing')||button.disabled||button.classList.contains('is-loading'))return;
  button.classList.add('is-loading');
  button.disabled=true;
  window.__houseAssistLoadingButton=button;
@@ -68,11 +68,12 @@ enh();
 const showAuth=(m,r)=>{S.mode=m||'login';if(r)S.role=r;authUI();$('#land').classList.add('hide');$('#learn').classList.add('hide');$('#auth').classList.remove('hide');scrollTo(0,0)};
 document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g){e.preventDefault();const[m,r]=g.dataset.go.split(',');showAuth(m,r)}
  const s=e.target.closest('[data-scroll]');if(s){e.preventDefault();document.getElementById(s.dataset.scroll).scrollIntoView({behavior:'smooth'})}
- if(e.target.id=='backHome'){$('#auth').classList.add('hide');$('#land').classList.remove('hide');scrollTo(0,0)}});
+ if(e.target.closest('#backHome,#backHomeText,#authBackLink')){$('#auth').classList.add('hide');$('#land').classList.remove('hide');scrollTo(0,0)}});
 /* nav */
 function drawer(){
  const c=S.role=='customer',it=[['home',c?'Find a house help':'Other house helps'],...(c?[['guide','Price guide'],['hired','Hired before']]:[['guide','Price guide']]),['messages','Messages'],['profile','Profile & appearance']];
- H($('#drawer'),it.map(([k,t])=>`<a data-k="${k}" class="${S.view==k?'on':''}">${t}</a>`).join('')+
+ H($('#drawer'),`<div class="drawer-brand"><span>&#8962;</span><b>${esc(S.site||'House Assist')}</b><small>Good help for a better home.</small></div>`+
+ it.map(([k,t])=>`<a data-k="${k}" class="${S.view==k?'on':''}">${t}</a>`).join('')+
  (c?'':`<a class="sos" data-k="sos">Emergency</a>`)+
  `<a data-k="out" style="margin-top:6px">Log out</a><div class="policy">House Assist is not responsible for arrangements or transactions completed outside the platform. Please confirm payments and service details carefully.</div>`);
 }
@@ -89,28 +90,62 @@ document.addEventListener('click',e=>{
  go(b.dataset.appNav);
 });
 
-/* listings */
+/* listings and role-aware dashboards */
+function helperPhoto(h){
+ const services=h.s||[],name=services[0]||'';
+ if(/garden|lawn/i.test(name))return 'images/slide-02-lawn-care.jpg';
+ if(/laundry|clean/i.test(name))return 'images/slide-03-cleaning-table.jpg';
+ if(/cook|kitchen/i.test(name))return 'images/slide-05-washing-dishes.jpg';
+ if(/child|elderly|care/i.test(name))return 'images/slide-06-childcare.jpg';
+ if(/electric/i.test(name))return 'images/slide-07-electrician.jpg';
+ if(/plumb/i.test(name))return 'images/slide-08-plumber.jpg';
+ if(/mason|paint|repair/i.test(name))return 'images/slide-09-carpenter.jpg';
+ return 'images/slide-01-cleaners-living-room.jpg';
+}
 function home(){
- const c=S.role=='customer';
- let l=helpers.filter(h=>(!S.q||(h.n+h.l).toLowerCase().includes(S.q.toLowerCase()))&&(!S.sv||h.s.includes(S.sv)));
- l.sort((a,b)=>S.sort=='rating'?b.r-a.r:S.sort=='low'?a.p-b.p:b.p-a.p);
- const services=[['House Cleaning','✦'],['AC Repair','❄'],['Plumbing','⌁'],['Electrical','⚡'],['Laundry','▤'],['Gardening','♧'],['Child Care','♡'],['More','＋']];
- const serviceButtons=services.map(([name,icon])=>`<button type="button" class="dash-service" data-service="${name}"><span>${icon}</span><small>${name}</small></button>`).join('');
- H($('#view'),`<div class="dash-topline"><div><small class="dash-kicker">${c?'CUSTOMER HOME':'HOUSE HELP HOME'}</small><h2>Hello, ${esc((S.user&&S.user.name||'there').split(' ')[0])} <span aria-hidden="true">👋</span></h2><p class="sub">${c?'Find reliable help for the work around your home.':'Keep your profile up to date and connect with customers nearby.'}</p></div><button type="button" class="dash-bell" data-app-nav="messages" aria-label="Open messages">♧</button></div>
- <div class="dash-search bar"><span aria-hidden="true">⌕</span><input id="q" placeholder="Search for a service or area" value="${S.q}"><button type="button" class="dash-filter" aria-label="Filter results">☷</button></div>
- <section class="dash-promo"><div><small>HOUSE ASSIST</small><h3>${c?'Find help for your home.':'Show customers what you do best.'}</h3><p>${c?'Compare trusted people, agree the details and get started.':'Add your services and price so nearby customers can find you.'}</p><button type="button" class="btn" data-app-nav="${c?'guide':'profile'}">${c?'Explore services':'Update profile'} <span>→</span></button></div><div class="dash-promo-art" aria-hidden="true">✦</div></section>
- <section class="dash-section"><div class="dash-section-head"><div><small class="dash-kicker">BROWSE BY CATEGORY</small><h3>Popular services</h3></div><button type="button" class="dash-see-all" data-app-nav="guide">See all →</button></div><div class="dash-services">${serviceButtons}</div></section>
- <section class="dash-section dash-recommended"><div class="dash-section-head"><div><small class="dash-kicker">${c?'NEARBY HOUSE HELPS':'AVAILABLE ON HOUSE ASSIST'}</small><h3>${c?'Recommended for you':'Other house helps'}</h3></div><button type="button" class="dash-see-all" data-app-nav="guide">See all →</button></div><div class="grid ${S.lay=='list'?'list':''}">${l.slice(0,4).map(card(c)).join('')||'<p class="mut dash-empty">No registered house helps match your search yet.</p>'}</div></section>
- <div class="dash-filters"><select id="sv"><option value="">All services</option>${['House Cleaning','Plumbing','Electrical','Mason','Painting','Repairs','Gardening','Lawn Care','Laundry','Ironing','Cooking','Kitchen Assist','Moving','Packing','Elderly Care','Child Care'].map(x=>`<option ${S.sv==x?'selected':''}>${x}</option>`).join('')}</select><select id="so"><option value="rating">Top rated</option><option value="low" ${S.sort=='low'?'selected':''}>Price: low to high</option><option value="high" ${S.sort=='high'?'selected':''}>Price: high to low</option></select></div>`);
- $('#q').oninput=e=>{S.q=e.target.value;const p=e.target.selectionStart;home();$('#q').focus();$('#q').setSelectionRange(p,p)};
- $('#sv').onchange=e=>{S.sv=e.target.value;home()};$('#so').onchange=e=>{S.sort=e.target.value;home()};enh($('#view'));
+ const c=S.role==='customer',name=esc((S.user&&S.user.name||'there').split(' ')[0]);
+ let matches=helpers.filter(h=>(!S.q||(h.n+h.l).toLowerCase().includes(S.q.toLowerCase()))&&(!S.sv||(h.s||[]).includes(S.sv)));
+ const ranked=[...matches].sort((a,b)=>(b.r||0)-(a.r||0));
+ const services=[['House Cleaning','&#10022;'],['AC Repair','&#10052;'],['Plumbing','&#8961;'],['Electrical','&#9889;'],['Laundry','&#9635;'],['Gardening','&#9827;'],['Child Care','&#9825;'],['More','&#65291;']];
+ const serviceButtons=services.map(([service,icon])=>`<button type="button" class="dash-service" data-service="${service}"><span>${icon}</span><small>${service}</small></button>`).join('');
+ if(c){
+  const featured=ranked.slice(0,2),more=[...ranked.slice(2)].sort((a,b)=>S.sort==='low'?a.p-b.p:S.sort==='high'?b.p-a.p:(b.r||0)-(a.r||0));
+  H($('#view'),`<div class="dashboard-view role-customer">
+   <div class="dash-topline"><div><small class="dash-kicker">YOUR HOME, WELL CARED FOR</small><h2>Welcome home, ${name}</h2><p class="sub">Find good help for the everyday things that make a house a home.</p></div><button type="button" class="dash-bell" data-app-nav="messages" aria-label="Open messages">&#9826;</button></div>
+   <div class="dash-search bar"><span aria-hidden="true">&#8981;</span><input id="q" placeholder="Search a service or region" value="${esc(S.q)}"><button type="button" class="dash-filter" aria-label="Filter results">&#9776;</button></div>
+   <section class="dash-promo customer-promo"><div><small>GOOD HELP FOR A BETTER HOME.</small><h3>A little help makes home feel lighter.</h3><p>Browse local people, compare their ratings, and find the right fit for your home.</p><button type="button" class="btn" data-app-nav="guide">Explore services <span>&#8594;</span></button></div><div class="dash-promo-art" aria-hidden="true">&#10035;</div></section>
+   <section class="dash-section"><div class="dash-section-head"><div><small class="dash-kicker">START WITH WHAT YOU NEED</small><h3>Popular services</h3></div><button type="button" class="dash-see-all" data-app-nav="guide">All services <span>&#8594;</span></button></div><div class="dash-services">${serviceButtons}</div></section>
+   <section class="dash-section dash-recommended"><div class="dash-section-head"><div><small class="dash-kicker">THE COMMUNITY'S TOP PICKS</small><h3>Highest rated house helps</h3></div><label class="dash-sort-label">Sort others <select id="so"><option value="rating">Top rated</option><option value="low" ${S.sort==='low'?'selected':''}>Lowest price</option><option value="high" ${S.sort==='high'?'selected':''}>Highest price</option></select></label></div>
+    ${featured.length?`<div class="helper-feature-grid">${featured.map(card(true,'featured')).join('')}</div>`:'<p class="mut dash-empty">No house helps match your search yet. Try another service or region.</p>'}
+   </section>
+   ${more.length?`<section class="dash-section dash-more-helpers"><div class="dash-section-head"><div><small class="dash-kicker">MORE LOCAL PROFESSIONALS</small><h3>More house helps to explore</h3></div><span class="dash-count">${more.length} profiles</span></div><div class="helper-compact-grid">${more.map(card(true,'compact')).join('')}</div></section>`:''}
+   <div class="dash-filters"><label>Filter service <select id="sv"><option value="">All services</option>${['House Cleaning','Plumbing','Electrical','Mason','Painting','Repairs','Gardening','Lawn Care','Laundry','Ironing','Cooking','Kitchen Assist','Moving','Packing','Elderly Care','Child Care'].map(x=>`<option ${S.sv===x?'selected':''}>${x}</option>`).join('')}</select></label></div>
+  </div>`);
+ }else{
+  const mine=helpers.find(h=>h.n===(S.user&&S.user.name))||null;
+  const rating=mine&&mine.r?`${mine.r}.0`:'New';
+  const price=mine&&mine.p?`GH&#8373; ${mine.p}`:'Set your rate';
+  const offered=mine&&mine.s&&mine.s.length?mine.s:['Add the services you offer'];
+  H($('#view'),`<div class="dashboard-view role-helper">
+   <div class="dash-topline"><div><small class="dash-kicker">YOUR HOUSE ASSIST SPACE</small><h2>Good to see you, ${name}</h2><p class="sub">Keep your profile ready for the next customer nearby.</p></div><button type="button" class="dash-bell" data-app-nav="messages" aria-label="Open messages">&#9826;</button></div>
+   <section class="dash-promo helper-promo"><div><small>YOUR WORK, YOUR REPUTATION</small><h3>Let your good work speak for itself.</h3><p>Keep your services and daily rate up to date so customers can find and contact you.</p><button type="button" class="btn" data-app-nav="profile">Manage your profile <span>&#8594;</span></button></div><div class="dash-promo-art" aria-hidden="true">&#10035;</div></section>
+   <section class="helper-overview"><div class="helper-overview-copy"><small class="dash-kicker">YOUR PUBLIC PROFILE</small><h3>${mine?esc(mine.n):name}</h3><p>${mine?esc(mine.l||S.user.loc||'Ghana'):'Complete your profile to start appearing in customer searches.'}</p><div class="helper-tags">${offered.map(x=>`<span>${esc(x)}</span>`).join('')}</div><button type="button" class="btn" data-app-nav="profile">Edit your profile <span>&#8594;</span></button></div><div class="helper-stat-grid"><div><small>Current rating</small><b>${rating}${mine&&mine.r?' <span>&#9733;</span>':''}</b><em>${mine&&mine.r?'Customer rated':'Build your reputation'}</em></div><div><small>Daily rate</small><b>${price}</b><em>Set a fair rate</em></div><div><small>Services listed</small><b>${mine&&mine.s?mine.s.length:'&mdash;'}</b><em>Help customers find you</em></div></div></section>
+   <section class="dash-section helper-guide"><div class="dash-section-head"><div><small class="dash-kicker">MAKE YOUR PROFILE STAND OUT</small><h3>Three ways to grow your presence</h3></div></div><div class="helper-tips"><article><span>01</span><b>Show what you do</b><p>List every service you can confidently provide.</p></article><article><span>02</span><b>Share your experience</b><p>Add a short introduction and your availability.</p></article><article><span>03</span><b>Keep your rate current</b><p>Make your daily price easy for customers to understand.</p></article></div></section>
+  </div>`);
+ }
+ const q=$('#q');if(q)q.oninput=e=>{S.q=e.target.value;const p=e.target.selectionStart;home();$('#q')?.focus();$('#q')?.setSelectionRange(p,p)};
+ const so=$('#so');if(so)so.onchange=e=>{S.sort=e.target.value;home()};
+ const sv=$('#sv');if(sv)sv.onchange=e=>{S.sv=e.target.value;home()};
+ enh($('#view'));
  $('#view').querySelectorAll('[data-service]').forEach(b=>b.onclick=()=>{const value=b.dataset.service;if(value==='More')return go('guide');S.sv=value;home()});
 }
-const card=c=>(h,i)=>`<div class="card helper"><div style="display:flex;gap:12px;align-items:center"><div class="av" style="background:${COL[helpers.indexOf(h)%6]}">${ini(h.n)}</div><div><b>${h.n}</b><div class="mut">${h.l}</div></div></div>
- <div>${h.s.map(s=>`<span class="tag">${s}</span>`).join('')}</div>
- <div><span class="stars" aria-label="${h.r} stars">${stars(h.r)}</span> <span class="mut">${h.r?h.r+'.0':'New'}</span></div>
- <div class="price">GH₵ ${h.p}<span class="mut" style="font:400 14px Figtree"> / day</span></div>
- ${c?`<button class="btn" data-view="${helpers.indexOf(h)}">View</button>`:''}</div>`;
+const card=(c,variant='normal')=>(h)=>{
+ const index=helpers.indexOf(h),rating=h.r?`${h.r}.0`:'New',price=`GH&#8373; ${h.p}`;
+ const service=(h.s||[])[0]||'Home help';
+ if(variant==='featured')return `<article class="helper-feature-card"><div class="helper-feature-photo"><img src="${helperPhoto(h)}" alt="${esc(service)} service example"><span class="feature-badge">TOP RATED</span><span class="feature-stars">&#9733; ${rating}</span></div><div class="helper-feature-body"><div class="helper-feature-person"><div class="av" style="background:${COL[index%6]}">${ini(h.n)}</div><div><b>${esc(h.n)}</b><small>${esc(h.l||'Ghana')}</small></div><span class="helper-rating-pill">&#9733; ${rating}</span></div><div class="helper-feature-tags">${(h.s||[]).slice(0,2).map(x=>`<span>${esc(x)}</span>`).join('')}</div><div class="helper-feature-bottom"><strong>${price}<small> / day</small></strong><button type="button" data-view="${index}">View profile <span>&#8594;</span></button></div></div></article>`;
+ if(variant==='compact')return `<article class="helper-compact-card"><div class="av" style="background:${COL[index%6]}">${ini(h.n)}</div><div class="helper-compact-person"><b>${esc(h.n)}</b><small>${esc(h.l||'Ghana')} &middot; ${(h.s||[])[0]||'Home help'}</small></div><span class="helper-rating-pill">${h.r?'&#9733; '+rating:'New'}</span><strong>${price}<small> / day</small></strong><button type="button" data-view="${index}" aria-label="View ${esc(h.n)} profile">&#8594;</button></article>`;
+ return `<div class="card helper"><div style="display:flex;gap:12px;align-items:center"><div class="av" style="background:${COL[index%6]}">${ini(h.n)}</div><div><b>${esc(h.n)}</b><div class="mut">${esc(h.l||'Ghana')}</div></div></div><div>${(h.s||[]).map(s=>`<span class="tag">${esc(s)}</span>`).join('')}</div><div><span class="stars" aria-label="${h.r||0} stars">${stars(h.r||0)}</span> <span class="mut">${rating}</span></div><div class="price">${price}<span class="mut" style="font:400 14px Figtree"> / day</span></div>${c?`<button class="btn" data-view="${index}">View</button>`:''}</div>`;
+};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)viewProfile(helpers[+b.dataset.view])});
 function viewProfile(h){
  const tel=(h.ph||'').replace(/[^0-9+]/g,''),ok=tel.length>6,fn=h.n.split(' ')[0],i=helpers.indexOf(h);
@@ -219,38 +254,24 @@ function profile(){
  $('#den').onclick=e=>{if(e.target.dataset.d){S.dense=e.target.dataset.d=='1';document.body.classList.toggle('dense',S.dense);profile()}};
 }
 
-/* fit the headline to one line across the photo */
-function fitHero(){const hero=document.querySelector('.hero'),h=hero&&hero.querySelector('h1');if(!h||!hero.clientWidth)return;h.style.fontSize='100px';const w=h.scrollWidth||h.offsetWidth;h.style.fontSize=Math.min(136,100*hero.clientWidth*0.752/w)+'px';h.style.left=Math.max(16,hero.clientWidth*0.03)+'px';const p=hero.querySelector('p');if(p){p.style.left=h.style.left;p.style.top=(h.offsetTop+h.offsetHeight+10)+'px'}}
-(()=>{const hero=document.querySelector('.hero');if(window.ResizeObserver)new ResizeObserver(fitHero).observe(hero);else addEventListener('resize',fitHero);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitHero);fitHero()})();
-
-/* home page slideshow */
-(()=>{const sl=[...document.querySelectorAll('#land .slides i')],dt=[...document.querySelectorAll('#land .dots button')];let k=0,t;
-const show=n=>{k=(n+sl.length)%sl.length;sl.forEach((e,i)=>e.classList.toggle('on',i==k));dt.forEach((e,i)=>e.classList.toggle('on',i==k))};
-const run=()=>{clearInterval(t);if(!matchMedia('(prefers-reduced-motion:reduce)').matches)t=setInterval(()=>{if(!document.getElementById('land').classList.contains('hide'))show(k+1)},5500)};
-dt.forEach((b,i)=>b.onclick=()=>{show(i);run()});show(0);run()})();
-
 /* services dropdown (multi-select) */
 (()=>{const box=document.getElementById('svcBox'),btn=box.querySelector('button');
 const sync=()=>{const v=[...box.querySelectorAll('input:checked')].map(x=>x.value);btn.textContent=v.length?(v.length>2?v.slice(0,2).join(', ')+' +'+(v.length-2):v.join(', ')):'Select services';btn.classList.toggle('ph',!v.length)};
 btn.onclick=e=>{e.preventDefault();e.stopPropagation();const o=!box.classList.contains('open');closeDD();box.classList.toggle('open',o)};
 box.querySelector('ul').onclick=e=>e.stopPropagation();
 box.addEventListener('change',sync);sync()})();
-/* home page sections */
-(()=>{const I={shield:'<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',home:'<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-6h4v6"/>'};
-const ic=n=>`<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
-const row=([i,t,d])=>`<div><span class="ico2">${ic(i)}</span><span><b>${t}</b><small>${d}</small></span></div>`;
-H($('#trust'),[['shield','Verified & Trained Assistants','Skilled helpers you can rely on.'],['clock','Same-Day Service','Book in minutes. We handle the rest.'],['shield','Safe & Secure','Your safety and privacy are our priority.'],['star','Affordable & Transparent Pricing','Clear daily prices and star ratings.']].map(row).join(''));
-H($('#wl'),[['clock','Save Time','Get things done, without the stress.'],['shield','Peace of Mind','Know you\u2019re in safe hands.'],['star','Quality Service','Professional, friendly and reliable.'],['home','A Cleaner, Healthier Home','Because your well-being matters.']].map(row).join(''));
-$('#whyimg').src=document.querySelector('.hero>.ph').src;
+/* landing interactions */
 $('#hfind').onclick=()=>{S.sv=$('#hsv').value||'';S.q=$('#hrg').value||'';showAuth('signup','customer')};
 document.addEventListener('click',e=>{const c=e.target.closest('[data-svc]');if(c){S.sv=c.dataset.svc;S.q='';showAuth('signup','customer')}});
-})();
+const landingNav=document.querySelector('.ha-nav'),landingMenu=document.querySelector('.ha-menu');
+landingMenu.onclick=()=>landingNav.classList.toggle('is-open');
+landingNav.querySelectorAll('.ha-navlinks a').forEach(a=>a.addEventListener('click',()=>landingNav.classList.remove('is-open')));
 /* learn more page */
 const COMPANY={phone:'',whatsapp:'',email:'',address:'',hours:'',social:{Facebook:'',Instagram:'',X:'',YouTube:'',LinkedIn:'',TikTok:''}};
 const showLearn=()=>{$('#land').classList.add('hide');$('#learn').classList.remove('hide');scrollTo(0,0)};
-const showHome=()=>{$('#learn').classList.add('hide');$('#land').classList.remove('hide');scrollTo(0,0)};
-document.addEventListener('click',e=>{if(e.target.closest('[data-learn]')){e.preventDefault();showLearn()}else if(e.target.closest('[data-home]')){e.preventDefault();showHome()}});
-$('#learnimg').src=document.querySelector('.hero>.ph').src;
+const showHome=target=>{$('#learn').classList.add('hide');$('#land').classList.remove('hide');scrollTo(0,0);if(target)requestAnimationFrame(()=>document.getElementById(target)?.scrollIntoView({behavior:'smooth'}))};
+document.addEventListener('click',e=>{if(e.target.closest('[data-learn]')){e.preventDefault();showLearn()}else{const homeLink=e.target.closest('[data-home]');if(homeLink){e.preventDefault();showHome(homeLink.dataset.homeTarget)}}});
+$('#learnimg').src='images/slide-04-housekeeper.jpg';
 (()=>{const C=COMPANY,dg=x=>String(x).replace(/[^0-9+]/g,''),ink=(t,v,h)=>`<div class="card cbox"><span class="ico2">${t}</span><span><b>${h}</b>${v}</span></div>`;
 const soon='<small>Coming soon</small>';
 H($('#cinfo'),[ink('\u260E',C.phone?`<a href="tel:${dg(C.phone)}">${esc(C.phone)}</a>`:soon,'Phone'),
@@ -262,27 +283,3 @@ H($('#csoc'),Object.entries(C.social).map(([n,u])=>u?`<a href="${esc(u)}" target
 $('#cs').onclick=()=>{const n=$('#cn').value.trim(),m=$('#cm').value.trim(),e=$('#ce').value.trim();if(!n||!m)return toast('Add your name and a message first');
  if(!C.email)return toast('Messages will work once the contact email is added');
  location.href='mailto:'+C.email+'?subject='+encodeURIComponent('Message from '+n)+'&body='+encodeURIComponent(m+'\n\n'+n+(e?' ('+e+')':''))}})();
-/* home page motion */
-(()=>{const root=document.documentElement,rm=matchMedia('(prefers-reduced-motion:reduce)').matches,land=document.getElementById('land');
-// animated headline
-const h=land.querySelector('.lh h1');const ws=h.textContent.trim().split(/\s+/);
-h.innerHTML=ws.map((w,i)=>`<span class="w"><span class="${i>=ws.length-2?'g':''}" style="--i:${i}">${w}</span></span>`).join(' ');
-[['.lhero .eye',0],['.lhero .lead',5],['.sbar',6],['.lh .dots',7]].forEach(([q,i])=>{const e=land.querySelector(q);if(e){e.classList.add('up');e.style.setProperty('--i',i)}});
-// orbs, floating service chips, ticker and counters
-land.querySelector('.slides').insertAdjacentHTML('afterend','<div class="orbs" aria-hidden="true"><i></i><i></i><i></i></div>');
-const fl=[['\u{1F9F9}','Cleaning','8%','6%','0s','-5deg'],['\u{1F527}','Plumbing','52%','0%','-1.5s','4deg'],['\u{1F373}','Cooking','4%','34%','-3s','3deg'],['\u{1F33F}','Gardening','46%','40%','-4.5s','-4deg'],['\u{1F9FA}','Laundry','12%','64%','-2s','5deg'],['\u{1F476}','Child Care','50%','76%','-3.5s','-3deg']];
-land.querySelector('.lh').insertAdjacentHTML('beforeend','<div class="floats" aria-hidden="true">'+fl.map(([e,t,l,tp,d,r])=>`<span style="left:${l};top:${tp};--d:${d};--r:${r}">${e} ${t}</span>`).join('')+'</div>');
-const names=['House Cleaning','Plumbing','Electrical','Mason','Painting','Repairs','Gardening','Lawn Care','Laundry','Ironing','Cooking','Kitchen Assist','Moving','Packing','Elderly Care','Child Care'],set=names.map(n=>`<span>${n}</span>`).join('');
-land.querySelector('.lhero').insertAdjacentHTML('afterend',`<div class="marq" aria-hidden="true"><div class="mq">${set}${set}</div></div><div class="wrap"><div class="stats2">${[[16,'Regions covered'],[16,'Services to choose'],[3,'Ways to pay'],[5,'Star ratings']].map(([n,l])=>`<div><b data-n="${n}">${rm?n:0}</b><small>${l}</small></div>`).join('')}</div></div>`);
-// scroll reveal
-root.classList.add('js-rv');
-const els=[...land.querySelectorAll('.lsec>h2,.lsec>.sub,.lsec>.eye,.svc,.tr>div,.why2>*,.g3>.card,#lp,.stats2>div,.lsec>.lead')];
-els.forEach(e=>e.classList.add('rv'));
-const count=t=>{const b=t.querySelector('b[data-n]');if(!b)return;const n=+b.dataset.n,t0=performance.now();const f=now=>{const p=Math.min(1,(now-t0)/1400);b.textContent=Math.round(n*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)};if(rm)b.textContent=n;else requestAnimationFrame(f)};
-const io=new IntersectionObserver(en=>en.forEach(x=>{if(!x.isIntersecting)return;const t=x.target,k=[...t.parentElement.children].indexOf(t);
- t.style.transitionDelay=Math.min(k,8)*70+'ms';t.classList.add('in');io.unobserve(t);
- t.addEventListener('transitionend',()=>{t.style.transitionDelay='';t.classList.add('done')},{once:true});count(t)}),{threshold:.12});
-els.forEach(e=>io.observe(e));
-// 3D tilt on service cards
-land.querySelectorAll('button.svc').forEach(c=>{c.addEventListener('pointermove',e=>{if(e.pointerType!='mouse'||rm)return;const r=c.getBoundingClientRect();c.style.setProperty('--ry',((e.clientX-r.left)/r.width-.5)*12+'deg');c.style.setProperty('--rx',-((e.clientY-r.top)/r.height-.5)*12+'deg')});c.addEventListener('pointerleave',()=>{c.style.setProperty('--rx','0deg');c.style.setProperty('--ry','0deg')})});
-})();
