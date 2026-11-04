@@ -6415,6 +6415,21 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 @media screen and (max-width:600px) {
  #auth .auth-wordmark { top:10px; padding-inline:14px; font-size:clamp(40px,12vw,72px); }
 }
+
+/* Full-screen auth composition with the form floating as clear sea-blue glass. */
+#auth.auth-page { width:100%; min-height:100svh; padding:0; }
+#auth .auth-header { position:absolute; top:0; right:0; left:0; width:100%; height:78px; padding:0 clamp(18px,4vw,58px); }
+#auth .auth-brand { color:#fff; }
+#auth .auth-brand small { color:rgba(255,255,255,.76); }
+#auth .auth-header nav a { color:#fff; text-shadow:0 1px 5px rgba(11,32,42,.55); }
+#auth .auth-stage { width:100%; min-height:100svh; flex:none; margin:0; border:0; border-radius:0; box-shadow:none; }
+#auth .auth-card.glass { background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.035) 48%,rgba(255,255,255,.08)),rgba(8,48,65,.2); border-color:rgba(255,255,255,.58); box-shadow:0 20px 50px rgba(13,33,44,.14),inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(255,255,255,.1); -webkit-backdrop-filter:blur(10px) saturate(150%); backdrop-filter:blur(10px) saturate(150%); }
+#auth .auth-bottom { display:none; }
+@media screen and (max-width:700px) {
+ #auth .auth-header { height:64px; padding:0 14px; }
+ #auth .auth-stage { min-height:100svh; padding:74px 14px 30px; border-radius:0; overflow:visible; }
+ #auth .auth-card.glass { padding:20px 17px 18px; }
+}
 @media screen and (max-width:360px) {
  .ha-container { width:calc(100% - 24px); }
  .ha-brand { gap:6px; }
