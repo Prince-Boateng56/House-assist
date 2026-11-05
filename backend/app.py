@@ -360,7 +360,7 @@ def auth_required(role: str | None = None):
 
 def helper_json(row, *, reveal_contact: bool = False):
     return {"id": row["id"], "n": row["name"], "l": row["location"],
-            "s": json.loads(row["services"]), "p": row["price"], "r": round(row["rating"]),
+            "s": json.loads(row["services"]), "p": row["price"], "r": round(row["rating"]), "rc": row["rating_count"],
             "ph": (row["phone"] or "") if reveal_contact else "", "h": 1 if row["user_id"] else 0,
             "b": row["bio"], "x": row["experience"], "av": row["availability"], "lg": row["languages"]}
 

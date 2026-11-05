@@ -6484,3 +6484,96 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  #app .app-bottom-nav button small { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); white-space:nowrap; }
  #app .app-bottom-nav button:focus-visible { outline:2px solid #fff; outline-offset:-3px; }
 }
+
+/* House-help profiles open as a dashboard page, not a details overlay. */
+#app .helper-detail-page { width:min(100%,1040px); margin:0 auto; }
+#app .helper-detail-back { display:inline-flex; min-height:44px; align-items:center; gap:9px; margin:0 0 18px; padding:0 15px; border:1px solid #dcecef; border-radius:999px; color:#075b70; background:#fff; font-size:13px; font-weight:700; cursor:pointer; }
+#app .helper-detail-back > span { font-size:18px; }
+#app .helper-detail-hero { display:grid; grid-template-columns:minmax(250px,.8fr) minmax(0,1.2fr); align-items:center; gap:clamp(20px,4vw,46px); margin-bottom:22px; }
+#app .helper-detail-photo { height:clamp(230px,30vw,360px); overflow:hidden; border:1px solid #dcecef; border-radius:30px; background:#eaf4f6; }
+#app .helper-detail-photo img { display:block; width:100%; height:100%; object-fit:cover; }
+#app .helper-detail-title h1 { margin:8px 0 6px; color:#17333e; font-family:Manrope,Arial,sans-serif; font-size:clamp(30px,4vw,48px); letter-spacing:-.06em; line-height:1.05; }
+#app .helper-detail-title > p { margin:0 0 12px; color:#718087; font-size:15px; }
+#app .helper-detail-rating { display:flex; align-items:center; gap:8px; color:#0b7185; font-size:13px; }
+#app .helper-detail-rating .mut { font-size:13px; }
+#app .helper-detail-content { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(270px,.75fr); align-items:start; gap:16px; }
+#app .helper-detail-main { display:grid; gap:12px; }
+#app .helper-detail-panel, #app .helper-detail-price { padding:22px; border:1px solid #dcecef; border-radius:25px; background:#fff; box-shadow:0 8px 24px #075b7009; }
+#app .helper-detail-panel h2 { margin:6px 0 9px; font-family:Manrope,Arial,sans-serif; font-size:20px; letter-spacing:-.035em; }
+#app .helper-detail-panel > p { margin:0; color:#718087; font-size:14px; line-height:1.7; }
+#app .helper-detail-tags { display:flex; flex-wrap:wrap; gap:8px; }
+#app .helper-detail-tags span { padding:8px 12px; border:1px solid #dcecef; border-radius:999px; color:#075b70; background:#eff8fa; font-size:12px; font-weight:700; }
+#app .helper-detail-facts { display:grid; gap:15px; }
+#app .helper-detail-facts > div { display:grid; gap:4px; }
+#app .helper-detail-facts span { color:#718087; font-size:12px; }
+#app .helper-detail-facts b { color:#17333e; font-size:14px; }
+#app .helper-detail-aside { position:sticky; top:18px; }
+#app .helper-detail-price > strong { display:block; margin:10px 0 7px; color:#075b70; font-family:Manrope,Arial,sans-serif; font-size:31px; letter-spacing:-.04em; }
+#app .helper-detail-price > strong small { color:#718087; font-family:inherit; font-size:13px; font-weight:500; letter-spacing:0; }
+#app .helper-detail-price > p { color:#718087; font-size:13px; line-height:1.6; }
+#app .helper-detail-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:16px; }
+#app .helper-detail-actions button { min-height:46px; border-radius:999px; font-size:13px; }
+#app .helper-detail-actions button:last-child { grid-column:1 / -1; }
+#app .helper-detail-phone { margin-top:12px; padding:12px; border-radius:15px; text-align:center; background:#eff8fa; }
+#app .helper-detail-phone a { color:#075b70; font-size:15px; font-weight:700; text-decoration:none; }
+#app .helper-card-link { display:inline-flex; align-items:center; gap:6px; color:#075b70; font-size:10px; font-weight:700; }
+#app .helper-card-arrow { display:grid; width:29px; height:29px; place-items:center; border-radius:50%; color:#0b7185; background:#eaf4f6; font-size:15px; }
+#app [data-view]:hover { border-color:#b8dce4; }
+#app [data-view]:focus-visible { outline:3px solid #70c4d3; outline-offset:2px; }
+
+/* Short, soft oval cards on customer dashboards on phones. */
+@media screen and (max-width:600px) {
+ #app .helper-feature-grid { display:grid; grid-auto-flow:row; grid-auto-columns:auto; grid-template-columns:minmax(0,1fr); gap:10px; overflow:visible; padding:0; }
+ #app .helper-feature-card { display:grid; grid-template-columns:72px minmax(0,1fr); align-items:center; gap:12px; min-height:96px; padding:9px; border:1px solid #dcecef; border-radius:28px; box-shadow:0 6px 18px rgba(7,91,112,.07); cursor:pointer; }
+ #app .helper-feature-card:focus-visible, #app .helper-compact-card:focus-visible, #app .card.helper:focus-visible { outline:3px solid #70c4d3; outline-offset:2px; }
+ #app .helper-feature-photo { width:72px; height:72px; border-radius:22px; }
+ #app .helper-feature-photo::after, #app .feature-badge, #app .feature-stars { display:none; }
+ #app .helper-feature-body { display:grid; min-width:0; gap:6px; padding:0; }
+ #app .helper-feature-person { min-width:0; gap:0; }
+ #app .helper-feature-person .av { display:none; }
+ #app .helper-feature-person > div:nth-child(2) { min-width:0; }
+ #app .helper-feature-person > div:nth-child(2) b { overflow:hidden; font-size:14px; text-overflow:ellipsis; white-space:nowrap; }
+ #app .helper-feature-person > div:nth-child(2) small { margin-top:2px; font-size:11px; }
+ #app .helper-feature-person .helper-rating-pill { margin-left:auto; padding:5px 8px; border-radius:999px; background:#eff8fa; font-size:10px; }
+ #app .helper-feature-tags { gap:5px; margin:0; }
+ #app .helper-feature-tags span { padding:4px 8px; border-radius:999px; font-size:10px; }
+ #app .helper-feature-bottom { gap:8px; padding-top:6px; }
+ #app .helper-feature-bottom > strong { font-size:13px; }
+ #app .helper-feature-bottom > strong small { font-size:10px; }
+ #app .helper-card-link { display:inline-flex; min-height:28px; align-items:center; gap:5px; padding:0 9px; border-radius:999px; color:#075b70; background:#eff8fa; font-size:10px; font-weight:700; white-space:nowrap; }
+ #app .helper-compact-grid { grid-template-columns:minmax(0,1fr); gap:9px; }
+ #app .helper-compact-card { grid-template-columns:50px minmax(0,1fr) 34px; grid-template-rows:auto auto; gap:3px 10px; min-height:84px; padding:9px 11px; border:1px solid #dcecef; border-radius:27px; box-shadow:0 5px 15px rgba(7,91,112,.055); cursor:pointer; }
+ #app .helper-compact-photo { display:block; grid-column:1; grid-row:1 / span 2; width:50px; height:50px; overflow:hidden; align-self:center; border-radius:18px; background:#eaf4f6; }
+ #app .helper-compact-photo img { display:block; width:100%; height:100%; object-fit:cover; }
+ #app .helper-compact-card > .av { display:none; }
+ #app .helper-compact-person { display:grid; min-width:0; grid-column:2; grid-row:1; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:2px 6px; }
+ #app .helper-compact-person b { grid-column:1; font-size:14px; }
+ #app .helper-compact-person small { grid-column:1 / -1; overflow:hidden; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+ #app .helper-compact-card .helper-rating-pill { grid-column:2; grid-row:1; padding:4px 7px; border-radius:999px; background:#eff8fa; font-size:9px; }
+ #app .helper-compact-card > strong { grid-column:2; grid-row:2; align-self:end; font-size:12px; }
+ #app .helper-compact-card > strong small { font-size:10px; }
+ #app .helper-card-arrow { display:grid; grid-column:3; grid-row:1 / span 2; width:34px; height:34px; place-items:center; align-self:center; border-radius:50%; color:#075b70; background:#eaf4f6; font-size:17px; }
+ #app .card.helper { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:9px 12px; padding:15px; border:1px solid #dcecef; border-radius:27px; box-shadow:0 5px 15px rgba(7,91,112,.055); cursor:pointer; }
+ #app .card.helper > div:first-child, #app .card.helper > div:nth-child(2) { grid-column:1 / -1; }
+ #app .card.helper > div:first-child .av { width:42px; height:42px; border-radius:50%; }
+ #app .card.helper > div:nth-child(2) { display:flex; flex-wrap:wrap; gap:6px; }
+ #app .card.helper > div:nth-child(2) .tag { border-radius:999px; }
+ #app .card.helper > div:nth-child(3) { align-self:center; }
+ #app .card.helper > div:nth-child(4) { justify-self:end; align-self:center; font-size:16px; }
+ #app .card.helper > .helper-card-link { grid-column:1 / -1; justify-content:center; min-height:38px; }
+ #app .helper-detail-page { width:100%; }
+ #app .helper-detail-back { min-height:42px; margin-bottom:12px; padding:0 13px; font-size:12px; }
+ #app .helper-detail-hero { grid-template-columns:minmax(0,1fr); gap:13px; margin-bottom:14px; }
+ #app .helper-detail-photo { height:clamp(170px,52vw,245px); border-radius:28px; }
+ #app .helper-detail-title h1 { margin:5px 0; font-size:clamp(27px,8vw,35px); }
+ #app .helper-detail-title > p { margin-bottom:8px; font-size:13px; }
+ #app .helper-detail-rating { font-size:12px; }
+ #app .helper-detail-content { grid-template-columns:minmax(0,1fr); gap:10px; }
+ #app .helper-detail-aside { position:static; order:-1; }
+ #app .helper-detail-panel, #app .helper-detail-price { padding:17px; border-radius:23px; }
+ #app .helper-detail-panel h2 { font-size:18px; }
+ #app .helper-detail-panel > p { font-size:13px; }
+ #app .helper-detail-actions { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:12px; }
+ #app .helper-detail-actions button { min-height:44px; padding-inline:8px; font-size:12px; }
+ #app .helper-detail-actions button:last-child { grid-column:auto; }
+}
