@@ -6604,3 +6604,38 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  #app .app-center-action:active { transform:translateY(-14px) scale(.96); }
  #app .app-center-action:focus-visible { outline:3px solid #fff; outline-offset:3px; }
 }
+
+/* Compact, profile-led mobile dashboard menu. */
+#drawer .drawer-profile { display:none; }
+#drawer .drawer-links, #drawer .drawer-bottom { display:contents; }
+#drawer .drawer-item-icon { display:none; }
+@media screen and (max-width:820px) {
+ #drawer { position:fixed; inset:max(10px,env(safe-area-inset-top)) auto 10px 12px; z-index:81; display:flex; width:min(300px,calc(100vw - 72px)); height:auto; max-height:calc(100dvh - 20px); flex-direction:column; gap:0; padding:22px 17px max(18px,env(safe-area-inset-bottom)); overflow:hidden; border:1px solid rgba(255,255,255,.92); border-radius:27px; background:rgba(255,255,255,.97); box-shadow:0 22px 65px rgba(16,52,62,.22),inset 0 1px 0 #fff; -webkit-backdrop-filter:blur(22px) saturate(145%); backdrop-filter:blur(22px) saturate(145%); transform:translateX(calc(-100% - 20px)); transition:transform .32s cubic-bezier(.22,.8,.25,1); }
+ #drawer.open { transform:translateX(0); }
+ #drawer::before, #drawer .drawer-brand { display:none !important; }
+ #drawer .drawer-profile { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; column-gap:12px; margin:0 0 15px; padding:1px 4px 17px; border-bottom:1px solid #e6eff1; }
+ #drawer .drawer-avatar { grid-row:1 / span 2; display:grid; width:46px; height:46px; place-items:center; border:2px solid #fff; border-radius:50%; color:#075b70; background:linear-gradient(145deg,#d8f0f1,#a9d7dc); box-shadow:0 2px 9px rgba(7,91,112,.14); font-size:14px; font-weight:800; letter-spacing:.02em; }
+ #drawer .drawer-profile-copy { display:flex; min-width:0; flex-direction:column; gap:2px; }
+ #drawer .drawer-profile-copy b { overflow:hidden; color:#20343c; font-size:15px; font-weight:750; text-overflow:ellipsis; white-space:nowrap; }
+ #drawer .drawer-profile-copy small { color:#849399; font-size:11px; }
+ #drawer a.drawer-profile-link { display:inline-flex; grid-column:2; min-height:26px; align-items:center; gap:5px; padding:0; color:#718087; background:transparent; font-size:11px; font-weight:600; text-decoration:none; }
+ #drawer a.drawer-profile-link span { color:#0b7185; font-size:14px; }
+ #drawer .drawer-links { display:flex; min-height:0; flex:1 1 auto; flex-direction:column; gap:3px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+ #drawer a.drawer-item { display:flex; min-height:47px; flex:none; align-items:center; gap:13px; margin:0; padding:0 11px; border:1px solid transparent; border-radius:14px; color:#52656d; background:transparent; font-size:13px; font-weight:600; line-height:1.25; text-decoration:none; transition:color .18s,background .18s,border-color .18s; -webkit-tap-highlight-color:transparent; }
+ #drawer a.drawer-item::before { display:none !important; content:none !important; }
+ #drawer .drawer-item-icon { display:grid; width:22px; height:22px; flex:none; place-items:center; color:#647a82; }
+ #drawer .drawer-item-icon svg { display:block; width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
+ #drawer .drawer-item-label { min-width:0; flex:1; }
+ #drawer a.drawer-item.on, #drawer a.drawer-item:hover { border-color:#dcecef; color:#075b70; background:#edf7f8; }
+ #drawer a.drawer-item.on .drawer-item-icon, #drawer a.drawer-item:hover .drawer-item-icon { color:#0b7185; }
+ #drawer a.drawer-profile-menu { display:none; }
+ #drawer a.drawer-item.sos { margin-top:7px; border-color:#f2dddd; color:#a44946; background:#fff8f7; }
+ #drawer a.drawer-item.sos .drawer-item-icon { color:#c45d58; }
+ #drawer .drawer-bottom { display:block; flex:none; margin-top:auto; padding-top:12px; border-top:1px solid #e6eff1; }
+ #drawer a.drawer-item.drawer-logout { min-height:45px; color:#61747b; }
+ #drawer a.drawer-item.drawer-logout .drawer-item-icon { color:#71878e; }
+ #drawer .policy { display:none; }
+ #scrim { position:fixed; inset:0; z-index:80; background:rgba(13,43,53,.44); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); }
+ body.drawer-open { overflow:hidden; }
+ #drawer a.drawer-item:focus-visible, #drawer a.drawer-profile-link:focus-visible { outline:3px solid #7cc6d1; outline-offset:2px; }
+}

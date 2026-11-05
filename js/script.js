@@ -59,7 +59,7 @@ authUI();
 $('#swL').onclick=e=>{if(e.target.tagName=='A'){S.mode=S.mode=='login'?'signup':'login';$('#aErr').textContent='';authUI()}};
 $('#eye').onclick=()=>{const p=$('#pw'),h=p.type=='password';p.type=h?'text':'password';$('#eye').textContent=h?'Hide':'Show'};
 const closeDD=()=>document.querySelectorAll('.dd.open').forEach(x=>x.classList.remove('open'));
-document.addEventListener('click',closeDD);document.addEventListener('keydown',e=>{if(e.key=='Escape')closeDD()});
+document.addEventListener('click',closeDD);document.addEventListener('keydown',e=>{if(e.key=='Escape'){closeDD();open(false)}});
 function enh(root=document){root.querySelectorAll('select:not([data-dd])').forEach(s=>{s.dataset.dd=1;s.style.display='none';
  const d=document.createElement('div'),b=document.createElement('button'),u=document.createElement('ul');d.className='dd';b.type='button';b.setAttribute('aria-haspopup','listbox');u.setAttribute('role','listbox');
  const draw=()=>{b.textContent=s.options[s.selectedIndex]?.text||'';b.classList.toggle('ph',s.value==='');u.innerHTML=[...s.options].map((o,i)=>o.value===''?'':`<li role="option" data-i="${i}" class="${i==s.selectedIndex?'on':''}">${o.text}</li>`).join('')};draw();
@@ -74,14 +74,25 @@ document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g
 /* nav */
 function drawer(){
  const c=S.role=='customer',it=[['home',c?'Find a house help':'Other house helps'],...(c?[['guide','Price guide'],['hired','Hired before']]:[['guide','Price guide']]),['messages','Messages'],['profile','Profile & appearance']];
- H($('#drawer'),`<div class="drawer-brand"><span>&#8962;</span><b>${esc(S.site||'House Assist')}</b><small>Good help for a better home.</small></div>`+
- it.map(([k,t])=>`<a data-k="${k}" class="${S.view==k?'on':''}">${t}</a>`).join('')+
- (c?'':`<a class="sos" data-k="sos">Emergency</a>`)+
- `<a data-k="out" style="margin-top:6px">Log out</a><div class="policy">House Assist is not responsible for arrangements or transactions completed outside the platform. Please confirm payments and service details carefully.</div>`);
+ const name=S.user?.name||'House Assist member',icons={
+  home:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 10 8.5-7 8.5 7"/><path d="M5.5 9.5V21h13V9.5M9.5 21v-6h5v6"/></svg>',
+  guide:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h13a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2V4.5Z"/><path d="M5 18a2 2 0 0 1 2-2h13M9 9h7M9 12h5"/></svg>',
+  hired:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16m-11 5 2 2 4-4"/></svg>',
+  messages:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4.5 2 1.4-4.2A7.5 7.5 0 1 1 20.5 11.5Z"/><path d="M8.5 11.5h7M8.5 14.5h4"/></svg>',
+  profile:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21c.8-4 3.3-6 7.5-6s6.7 2 7.5 6"/></svg>',
+  sos:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.1 3.5h2.7l1.4 3.8-1.9 1.5a13 13 0 0 0 5.9 5.9l1.5-1.9 3.8 1.4v2.7c0 .9-.7 1.6-1.6 1.6A15.4 15.4 0 0 1 5.5 5.1c0-.9.7-1.6 1.6-1.6Z"/></svg>',
+  out:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M14 16l5-4-5-4m5 4H9"/></svg>'
+ };
+ const link=([k,label],extra='')=>`<a href="#app" data-k="${k}" class="drawer-item ${extra} ${S.view==k?'on':''}" ${S.view==k?'aria-current="page"':''}><span class="drawer-item-icon">${icons[k]}</span><span class="drawer-item-label">${label}</span></a>`;
+ H($('#drawer'),`<div class="drawer-brand"><span>&#8962;</span><b>${safeHtml(S.site||'House Assist')}</b><small>Good help for a better home.</small></div>
+  <section class="drawer-profile" aria-label="Your account"><div class="drawer-avatar" aria-hidden="true">${safeHtml(ini(name))}</div><div class="drawer-profile-copy"><b>${safeHtml(name)}</b><small>${c?'House owner':'House help'}</small></div><a href="#app" data-k="profile" class="drawer-profile-link" ${S.view=='profile'?'aria-current="page"':''}>View profile <span aria-hidden="true">&#8599;</span></a></section>
+  <div class="drawer-links">${it.map(item=>link(item,item[0]=='profile'?'drawer-profile-menu':'')).join('')}${c?'':link(['sos','Emergency'],'sos')}</div>
+  <div class="drawer-bottom">${link(['out','Log out'],'drawer-logout')}<div class="policy">House Assist is not responsible for arrangements or transactions completed outside the platform. Please confirm payments and service details carefully.</div></div>`);
+ const mobile=window.matchMedia('(max-width: 820px)').matches;$('#drawer').inert=mobile;$('#drawer').setAttribute('aria-hidden',String(mobile));
 }
-const open=o=>{$('#drawer').classList.toggle('open',o);$('#scrim').classList.toggle('hide',!o)};
+const open=o=>{const mobile=window.matchMedia('(max-width: 820px)').matches;$('#drawer').classList.toggle('open',o);$('#drawer').inert=mobile&&!o;$('#drawer').setAttribute('aria-hidden',String(mobile&&!o));$('#scrim').classList.toggle('hide',!o);$('#bg').setAttribute('aria-expanded',String(o));$('#bg').setAttribute('aria-label',o?'Close menu':'Open menu');document.body.classList.toggle('drawer-open',o)};
 $('#bg').onclick=()=>open(true);$('#scrim').onclick=()=>open(false);
-$('#drawer').onclick=e=>{const k=e.target.closest('a')?.dataset.k;if(!k)return;open(false);
+$('#drawer').onclick=e=>{const item=e.target.closest('a[data-k]');if(!item)return;e.preventDefault();const k=item.dataset.k;open(false);
  if(k=='sos')return sos();if(k=='out')return location.reload();go(k)};
 function syncDashboardNav(view){
  const nav=document.querySelector('.app-bottom-nav');if(!nav)return;
