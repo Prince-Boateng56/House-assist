@@ -6639,3 +6639,51 @@ html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
  body.drawer-open { overflow:hidden; }
  #drawer a.drawer-item:focus-visible, #drawer a.drawer-profile-link:focus-visible { outline:3px solid #7cc6d1; outline-offset:2px; }
 }
+
+/* Mobile helper cards: full-width photos and readable details, one card per row. */
+@media screen and (max-width:820px) {
+ #app .dash-recommended .helper-feature-grid { display:grid; grid-auto-flow:row; grid-auto-columns:auto; grid-template-columns:minmax(0,1fr); gap:15px; overflow:visible; padding:0; }
+ #app .helper-feature-card { display:grid; min-width:0; grid-template-columns:minmax(0,1fr); gap:0; min-height:0; padding:0; overflow:hidden; border:1px solid #dcecef; border-radius:26px; background:#fff; box-shadow:0 12px 30px rgba(7,91,112,.085); }
+ #app .helper-feature-card:hover { transform:translateY(-2px); }
+ #app .helper-feature-photo { width:auto; height:clamp(180px,42vw,240px); overflow:hidden; border-radius:25px 25px 0 0; background:#dcecef; }
+ #app .helper-feature-photo::after { display:block; background:linear-gradient(0deg,rgba(13,44,54,.38),transparent 56%); }
+ #app .helper-feature-photo img { display:block; width:100%; height:100%; object-fit:cover; object-position:center 42%; }
+ #app .feature-badge, #app .feature-stars { display:block; top:13px; padding:7px 10px; border:1px solid #ffffff55; border-radius:999px; color:#fff; background:rgba(7,91,112,.8); font-size:10px; letter-spacing:.035em; -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+ #app .helper-feature-body { display:grid; min-width:0; gap:11px; padding:16px 17px 17px; }
+ #app .helper-feature-person { display:flex; min-width:0; align-items:center; gap:10px; }
+ #app .helper-feature-person .av { display:grid; width:42px; height:42px; flex:none; border-radius:50%; font-size:13px; }
+ #app .helper-feature-person > div:nth-child(2) { min-width:0; flex:1; }
+ #app .helper-feature-person > div:nth-child(2) b { display:block; overflow:visible; color:#20343c; font-size:16px; line-height:1.25; text-overflow:clip; white-space:normal; }
+ #app .helper-feature-person > div:nth-child(2) small { display:block; margin-top:3px; color:#718087; font-size:12px; line-height:1.35; }
+ #app .helper-feature-person .helper-rating-pill { flex:none; margin-left:auto; padding:6px 9px; border:1px solid #e2eff1; border-radius:999px; color:#075b70; background:#f1f8f9; font-size:11px; }
+ #app .helper-feature-tags { display:flex; flex-wrap:wrap; gap:7px; margin:0; }
+ #app .helper-feature-tags span { padding:6px 10px; border:1px solid #e0eef0; border-radius:999px; color:#075b70; background:#f2f8f9; font-size:11px; line-height:1.25; }
+ #app .helper-feature-bottom { display:flex; min-width:0; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:9px; padding-top:12px; border-top:1px solid #e8f0f1; }
+ #app .helper-feature-bottom > strong { color:#075b70; font-size:19px; line-height:1.15; }
+ #app .helper-feature-bottom > strong small { font-size:12px; }
+ #app .helper-card-link { display:inline-flex; min-height:42px; align-items:center; gap:7px; padding:0 13px; border:1px solid #dcecef; border-radius:999px; color:#075b70; background:#f5fafb; font-size:12px; font-weight:700; white-space:nowrap; }
+}
+
+/* One moving active notch, matching the supplied dashboard navigation reference. */
+@media screen and (max-width:820px) {
+ #app .app-nav-indicator { z-index:2; top:-8px; left:calc(10% - 30px); width:60px; height:60px; opacity:1; transform:none; transition:left .38s cubic-bezier(.2,.9,.2,1),opacity .2s; }
+ #app .app-nav-indicator::after { width:43px; height:43px; }
+ #app .app-bottom-nav::before { position:absolute; z-index:1; top:-18px; left:calc(10% - 37px); width:74px; height:74px; content:""; border:0; border-radius:50%; background:#f5f9fa; box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; transform:none; transition:left .38s cubic-bezier(.2,.9,.2,1),opacity .2s; pointer-events:none; }
+ #app .app-bottom-nav[data-active="guide"] .app-nav-indicator { left:calc(30% - 30px); }
+ #app .app-bottom-nav[data-active="find"] .app-nav-indicator, #app .app-bottom-nav[data-active="emergency"] .app-nav-indicator { left:calc(50% - 30px); }
+ #app .app-bottom-nav[data-active="messages"] .app-nav-indicator { left:calc(70% - 30px); }
+ #app .app-bottom-nav[data-active="profile"] .app-nav-indicator { left:calc(90% - 30px); }
+ #app .app-bottom-nav[data-active="guide"]::before { left:calc(30% - 37px); }
+ #app .app-bottom-nav[data-active="find"]::before, #app .app-bottom-nav[data-active="emergency"]::before { left:calc(50% - 37px); }
+ #app .app-bottom-nav[data-active="messages"]::before { left:calc(70% - 37px); }
+ #app .app-bottom-nav[data-active="profile"]::before { left:calc(90% - 37px); }
+ #app .app-bottom-nav[data-active=""] .app-nav-indicator, #app .app-bottom-nav[data-active=""]::before { opacity:0; }
+ #app .app-bottom-nav button[data-app-nav] { z-index:3; }
+ #app .app-bottom-nav button[data-app-nav].on { z-index:4; transform:translateY(-9px); }
+ #app .app-center-action { position:relative; z-index:3; grid-column:3; grid-row:1; display:grid; width:50px; height:50px; min-width:0; min-height:0; place-content:center; justify-self:center; align-self:center; gap:2px; margin:0; padding:0; border:0; border-radius:50%; color:#0b7185; background:transparent; box-shadow:none; text-decoration:none; transform:none; transition:color .22s,transform .38s cubic-bezier(.2,.9,.2,1); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+ #app .app-center-action.is-emergency { color:#bd5855; background:transparent; box-shadow:none; }
+ #app .app-center-action svg { display:block; width:23px; height:23px; justify-self:center; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+ #app .app-center-action small { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); white-space:nowrap; }
+ #app .app-center-action.on { z-index:4; color:#fff; transform:translateY(-9px); }
+ #app .app-center-action:active { transform:translateY(-6px) scale(.96); }
+}

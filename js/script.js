@@ -102,9 +102,10 @@ function syncDashboardNav(view){
  const center=nav.querySelector('[data-center-action]'),helperMode=S.role==='helper';
  if(center){
   center.classList.toggle('is-emergency',helperMode);
+  center.classList.remove('on');
   center.setAttribute('aria-label',helperMode?'Call Ghana Police emergency number 191':'Find a house help');
   center.innerHTML=helperMode?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.1 3.5h2.7l1.4 3.8-1.9 1.5a13 13 0 0 0 5.9 5.9l1.5-1.9 3.8 1.4v2.7c0 .9-.7 1.6-1.6 1.6A15.4 15.4 0 0 1 5.5 5.1c0-.9.7-1.6 1.6-1.6Z"/></svg><small>SOS</small>':'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"/><path d="m15.5 15.5 4.3 4.3"/></svg><small>Find</small>';
-  center.onclick=()=>{if(helperMode){window.location.href='tel:191';return}go('home');requestAnimationFrame(()=>document.querySelector('#q')?.focus({preventScroll:true}))};
+  center.onclick=()=>{if(helperMode){nav.dataset.active='emergency';buttons.forEach(button=>button.classList.remove('on'));center.classList.add('on');window.location.href='tel:191';return}go('home');requestAnimationFrame(()=>{nav.dataset.active='find';buttons.forEach(button=>button.classList.remove('on'));center.classList.add('on');document.querySelector('#q')?.focus({preventScroll:true})})};
  }
  const activeView=buttons.some(button=>button.dataset.appNav===view)?view:'';
  nav.dataset.active=activeView;
