@@ -5772,11 +5772,12 @@ body:has(.ha-landing) { background:#f5f9fa; color:#17252b; }
 .ha-text-link { color:#075b70; font-size:11px; font-weight:700; text-decoration:none; }
 .ha-text-link span { margin-left:6px; }
 .ha-service-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:15px; }
-.ha-service-card { position:relative; isolation:isolate; display:flex; min-height:335px; overflow:hidden; flex-direction:column; justify-content:space-between; padding:17px; border:0; border-radius:9px; color:white; text-align:left; background:#34576a; cursor:pointer; }
+.ha-service-card { position:relative; isolation:isolate; display:flex; min-height:335px; overflow:hidden; flex-direction:column; justify-content:space-between; padding:17px; border:0; border-radius:9px; color:white; text-align:left; background:#34576a url('../images/slide-01-cleaners-living-room.jpg') center/cover no-repeat; cursor:pointer; }
+.ha-service-card:nth-child(2) { background-image:url('../images/slide-03-cleaning-table.jpg'); }
+.ha-service-card:nth-child(3) { background-image:url('../images/slide-04-housekeeper.jpg'); }
 .ha-service-card::before { position:absolute; z-index:1; inset:0; content:""; background:linear-gradient(0deg,rgba(20,27,20,.86),rgba(20,27,20,.06) 71%); pointer-events:none; }
 .ha-service-card::after { position:absolute; z-index:3; inset:0; content:""; border:1px solid #fff2; border-radius:inherit; pointer-events:none; }
-.ha-service-photo { position:absolute; z-index:0; inset:0; display:block; width:100%; height:100%; object-fit:cover; transition:transform .35s; }
-.ha-service-card:hover .ha-service-photo { transform:scale(1.035); }
+.ha-service-card:hover { background-position:center 46%; }
 .ha-card-meta { position:relative; z-index:2; display:flex; align-items:center; gap:9px; color:#fff; font-size:9px; }
 .ha-card-meta i { font-size:8px; font-style:normal; font-weight:700; letter-spacing:.1em; }
 .ha-card-meta b { display:grid; width:25px; height:25px; margin-left:auto; place-items:center; border-radius:50%; color:#075b70; background:#fff; font-size:13px; }
