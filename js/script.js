@@ -86,6 +86,15 @@ $('#drawer').onclick=e=>{const k=e.target.closest('a')?.dataset.k;if(!k)return;o
 function syncDashboardNav(view){
  const nav=document.querySelector('.app-bottom-nav');if(!nav)return;
  const buttons=[...nav.querySelectorAll('button[data-app-nav]')];
+ const labels=S.role==='helper'?{home:'Dashboard',guide:'Price guide',messages:'Messages',profile:'Profile'}:{home:'Home',guide:'Price guide',messages:'Messages',profile:'Account'};
+ buttons.forEach(button=>{const label=button.querySelector('small');if(label)label.textContent=labels[button.dataset.appNav]||button.dataset.appNav});
+ const center=nav.querySelector('[data-center-action]'),helperMode=S.role==='helper';
+ if(center){
+  center.classList.toggle('is-emergency',helperMode);
+  center.setAttribute('aria-label',helperMode?'Call Ghana Police emergency number 191':'Find a house help');
+  center.innerHTML=helperMode?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.1 3.5h2.7l1.4 3.8-1.9 1.5a13 13 0 0 0 5.9 5.9l1.5-1.9 3.8 1.4v2.7c0 .9-.7 1.6-1.6 1.6A15.4 15.4 0 0 1 5.5 5.1c0-.9.7-1.6 1.6-1.6Z"/></svg><small>SOS</small>':'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"/><path d="m15.5 15.5 4.3 4.3"/></svg><small>Find</small>';
+  center.onclick=()=>{if(helperMode){window.location.href='tel:191';return}go('home');requestAnimationFrame(()=>document.querySelector('#q')?.focus({preventScroll:true}))};
+ }
  const activeView=buttons.some(button=>button.dataset.appNav===view)?view:'';
  nav.dataset.active=activeView;
  buttons.forEach(button=>{
@@ -235,8 +244,8 @@ function rate(){let n=0;
  $('#sb').onclick=()=>{if(!n&&!$('#rv').value.trim())return toast('Add a rating or a recommendation first');
   if(!S.hired.includes(P.h))S.hired.push(P.h);modal(0);toast('Thanks, your feedback is saved')};
 }
-function sos(){modal(`<h3 style="font-size:26px;color:var(--red)">Emergency</h3><p>Call the national emergency line now.</p><a class="btn warn" style="display:block;text-align:center;text-decoration:none;font-size:22px" href="tel:112">Call 112</a>
- <p class="mut">Police 191 · Ambulance 193 · Fire 192. Confirm these numbers before launch.</p><button class="btn alt" style="width:100%" id="cl">Close</button>`);$('#cl').onclick=()=>modal(0)}
+function sos(){modal(`<h3 style="font-size:26px;color:var(--red)">Call the Police</h3><p>Connect directly to the Ghana Police emergency line.</p><a class="btn warn" style="display:block;text-align:center;text-decoration:none;font-size:22px" href="tel:191">Call Police · 191</a>
+ <p class="mut">Ghana Police also lists 18555 as a toll-free helpline.</p><button class="btn alt" style="width:100%" id="cl">Close</button>`);$('#cl').onclick=()=>modal(0)}
 
 /* profile + theme */
 const THEMES={Ocean:['#f3f9fa','#ffffff','#183943','#08798e','#075b70'],Emerald:['#f1f8f6','#ffffff','#193c38','#087d77','#075b70'],Night:['#eef6f8','#ffffff','#173641','#096d86','#075b70'],Sunset:['#faf6f2','#ffffff','#3d3530','#0b7186','#075b70'],Violet:['#f5f3f9','#ffffff','#302b3b','#08798e','#075b70'],Mono:['#f5f8f9','#ffffff','#24383e','#347c8b','#075b70']};
