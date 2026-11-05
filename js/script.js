@@ -1,6 +1,7 @@
 /* House Assist | app logic: pages, listings, profiles, messages, slideshow and motion */
 
 const $=s=>document.querySelector(s),H=(n,x)=>{n.innerHTML=x};
+const safeHtml=value=>{const node=document.createElement('span');node.textContent=String(value??'');return node.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;')};
 const COL=['#d8eaf0','#b9d9e2','#eaf4f6','#a6cbd7','#c6e0e7','#8ebdca'];
 let helpers=[];
 let S={role:'customer',mode:'login',user:null,view:'home',lay:'grid',dense:false,site:'House Assist',hired:[],q:'',sv:'',sort:'rating'};
@@ -38,6 +39,7 @@ function authUI(){
  $('#go').textContent=su?'Create account':'Log in';$('#aT').textContent=su?'Join House Assist':'Welcome back';
  $('#aS').textContent=su?'Create your account to get started':'Please enter your details to continue';
  $('#usernameFieldLabel').textContent=su?'Full name':'Username';$('#u').placeholder=su?'e.g. Akosua Mensah':'Enter your username';$('#u').autocomplete=su?'name':'username';
+ $('#pw').autocomplete=su?'new-password':'current-password';$('#pw').placeholder=su?'At least 10 characters':'Enter your password';$('#pw').maxLength=128;
  $('#rmRow').classList.toggle('hide',su);
  $('#swL').innerHTML=su?'Already have an account? <a>Log in</a>':'Don’t have an account? <a>Sign up</a>';
 }
@@ -84,10 +86,10 @@ $('#drawer').onclick=e=>{const k=e.target.closest('a')?.dataset.k;if(!k)return;o
 function syncDashboardNav(view){
  const nav=document.querySelector('.app-bottom-nav');if(!nav)return;
  const buttons=[...nav.querySelectorAll('button[data-app-nav]')];
- if(!buttons.some(button=>button.dataset.appNav===view))return;
- nav.dataset.active=view;
+ const activeView=buttons.some(button=>button.dataset.appNav===view)?view:'';
+ nav.dataset.active=activeView;
  buttons.forEach(button=>{
-  const active=button.dataset.appNav===view;
+  const active=button.dataset.appNav===activeView;
   button.classList.toggle('on',active);
   if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
  });
@@ -114,9 +116,9 @@ function helperPhoto(h){
 }
 function home(){
  const c=S.role==='customer',name=esc((S.user&&S.user.name||'there').split(' ')[0]);
- let matches=helpers.filter(h=>(!S.q||(h.n+h.l).toLowerCase().includes(S.q.toLowerCase()))&&(!S.sv||(h.s||[]).includes(S.sv)));
+ let matches=helpers.filter(h=>(!S.q||`${h.n} ${h.l} ${(h.s||[]).join(' ')}`.toLowerCase().includes(S.q.toLowerCase()))&&(!S.sv||(h.s||[]).includes(S.sv)));
  const ranked=[...matches].sort((a,b)=>(b.r||0)-(a.r||0));
- const services=[['House Cleaning','&#10022;'],['AC Repair','&#10052;'],['Plumbing','&#8961;'],['Electrical','&#9889;'],['Laundry','&#9635;'],['Gardening','&#9827;'],['Child Care','&#9825;'],['More','&#65291;']];
+  const services=[['House Cleaning','&#10022;'],['Repairs','&#10052;'],['Plumbing','&#8961;'],['Electrical','&#9889;'],['Laundry','&#9635;'],['Gardening','&#9827;'],['Child Care','&#9825;'],['More','&#65291;']];
  const serviceButtons=services.map(([service,icon])=>`<button type="button" class="dash-service" data-service="${service}"><span>${icon}</span><small>${service}</small></button>`).join('');
  if(c){
   const featured=ranked.slice(0,2),more=[...ranked.slice(2)].sort((a,b)=>S.sort==='low'?a.p-b.p:S.sort==='high'?b.p-a.p:(b.r||0)-(a.r||0));
@@ -152,22 +154,22 @@ function home(){
 const card=(c,variant='normal')=>(h)=>{
  const index=helpers.indexOf(h),rating=h.r?`${h.r}.0`:'New',price=`GH&#8373; ${h.p}`;
  const service=(h.s||[])[0]||'Home help';
- if(variant==='featured')return `<article class="helper-feature-card"><div class="helper-feature-photo"><img src="${helperPhoto(h)}" alt="${esc(service)} service example"><span class="feature-badge">TOP RATED</span><span class="feature-stars">&#9733; ${rating}</span></div><div class="helper-feature-body"><div class="helper-feature-person"><div class="av" style="background:${COL[index%6]}">${ini(h.n)}</div><div><b>${esc(h.n)}</b><small>${esc(h.l||'Ghana')}</small></div><span class="helper-rating-pill">&#9733; ${rating}</span></div><div class="helper-feature-tags">${(h.s||[]).slice(0,2).map(x=>`<span>${esc(x)}</span>`).join('')}</div><div class="helper-feature-bottom"><strong>${price}<small> / day</small></strong><button type="button" data-view="${index}">View profile <span>&#8594;</span></button></div></div></article>`;
- if(variant==='compact')return `<article class="helper-compact-card"><div class="av" style="background:${COL[index%6]}">${ini(h.n)}</div><div class="helper-compact-person"><b>${esc(h.n)}</b><small>${esc(h.l||'Ghana')} &middot; ${(h.s||[])[0]||'Home help'}</small></div><span class="helper-rating-pill">${h.r?'&#9733; '+rating:'New'}</span><strong>${price}<small> / day</small></strong><button type="button" data-view="${index}" aria-label="View ${esc(h.n)} profile">&#8594;</button></article>`;
- return `<div class="card helper"><div style="display:flex;gap:12px;align-items:center"><div class="av" style="background:${COL[index%6]}">${ini(h.n)}</div><div><b>${esc(h.n)}</b><div class="mut">${esc(h.l||'Ghana')}</div></div></div><div>${(h.s||[]).map(s=>`<span class="tag">${esc(s)}</span>`).join('')}</div><div><span class="stars" aria-label="${h.r||0} stars">${stars(h.r||0)}</span> <span class="mut">${rating}</span></div><div class="price">${price}<span class="mut" style="font:400 14px Figtree"> / day</span></div>${c?`<button class="btn" data-view="${index}">View</button>`:''}</div>`;
+  if(variant==='featured')return `<article class="helper-feature-card"><div class="helper-feature-photo"><img src="${helperPhoto(h)}" alt="${safeHtml(service)} service example"><span class="feature-badge">TOP RATED</span><span class="feature-stars">&#9733; ${rating}</span></div><div class="helper-feature-body"><div class="helper-feature-person"><div class="av" style="background:${COL[index%6]}">${safeHtml(ini(h.n))}</div><div><b>${safeHtml(h.n)}</b><small>${safeHtml(h.l||'Ghana')}</small></div><span class="helper-rating-pill">&#9733; ${rating}</span></div><div class="helper-feature-tags">${(h.s||[]).slice(0,2).map(x=>`<span>${safeHtml(x)}</span>`).join('')}</div><div class="helper-feature-bottom"><strong>${price}<small> / day</small></strong><button type="button" data-view="${index}">View profile <span>&#8594;</span></button></div></div></article>`;
+  if(variant==='compact')return `<article class="helper-compact-card"><div class="av" style="background:${COL[index%6]}">${safeHtml(ini(h.n))}</div><div class="helper-compact-person"><b>${safeHtml(h.n)}</b><small>${safeHtml(h.l||'Ghana')} &middot; ${safeHtml((h.s||[])[0]||'Home help')}</small></div><span class="helper-rating-pill">${h.r?'&#9733; '+rating:'New'}</span><strong>${price}<small> / day</small></strong><button type="button" data-view="${index}" aria-label="View ${safeHtml(h.n)} profile">&#8594;</button></article>`;
+  return `<div class="card helper"><div style="display:flex;gap:12px;align-items:center"><div class="av" style="background:${COL[index%6]}">${safeHtml(ini(h.n))}</div><div><b>${safeHtml(h.n)}</b><div class="mut">${safeHtml(h.l||'Ghana')}</div></div></div><div>${(h.s||[]).map(s=>`<span class="tag">${safeHtml(s)}</span>`).join('')}</div><div><span class="stars" aria-label="${Number(h.r)||0} stars">${stars(Number(h.r)||0)}</span> <span class="mut">${rating}</span></div><div class="price">${price}<span class="mut" style="font:400 14px Figtree"> / day</span></div>${c?`<button class="btn" data-view="${index}">View</button>`:''}</div>`;
 };
 document.addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)viewProfile(helpers[+b.dataset.view])});
 function viewProfile(h){
  const tel=(h.ph||'').replace(/[^0-9+]/g,''),ok=tel.length>6,fn=h.n.split(' ')[0],i=helpers.indexOf(h);
  const msg=encodeURIComponent('Hi '+fn+', I found you on House Assist and I\u2019d like to ask about your '+(h.s[0]||'service')+' service.');
- modal(`<div class="pf"><div class="pf-head"><div class="av" style="background:${COL[i%6]};width:72px;height:72px;font-size:26px">${ini(h.n)}</div><div><h3 style="font-size:24px;margin-bottom:5px">${h.n}</h3>
- <div>${h.r?`<span class="stars">${stars(h.r)}</span> <b>${h.r}.0</b>`:'<span class="mut">No ratings yet</span>'}</div><div class="mut">\u{1F4CD} ${h.l}</div></div></div>
- <div class="pf-stats"><div><b>GH\u20b5 ${h.p}</b><small>per day</small></div><div><b>${h.jb||0}</b><small>jobs done</small></div><div><b>${h.x||'New'}</b><small>experience</small></div></div>
- <h4>About</h4><p>${h.b||'New on House Assist. Ask about the work they can do for you.'}</p>
- <h4>Services</h4><div>${h.s.map(x=>`<span class="tag">${x}</span>`).join('')}</div>
- <h4>Availability</h4><p>${h.av||'Ask when you get in touch'}</p>
- <h4>Languages</h4><p>${h.lg||'English'}</p>
- ${ok?`<div class="pf-num hide" id="pfnum"><small>Tap the number to call</small><a class="btn" href="tel:${tel}">${h.ph}</a></div>`:''}<div class="pf-act">${ok?`<button class="btn" type="button" id="pfcall">Call</button>`:''}<button class="btn alt" type="button" id="pft">Text</button><button class="btn hire" type="button" id="pfh">Hire ${fn}</button></div>
+  modal(`<div class="pf"><div class="pf-head"><div class="av" style="background:${COL[i%6]};width:72px;height:72px;font-size:26px">${safeHtml(ini(h.n))}</div><div><h3 style="font-size:24px;margin-bottom:5px">${safeHtml(h.n)}</h3>
+  <div>${h.r?`<span class="stars">${stars(Number(h.r)||0)}</span> <b>${Number(h.r)||0}.0</b>`:'<span class="mut">No ratings yet</span>'}</div><div class="mut">\u{1F4CD} ${safeHtml(h.l||'Ghana')}</div></div></div>
+  <div class="pf-stats"><div><b>GH\u20b5 ${Number(h.p)||0}</b><small>per day</small></div><div><b>${Number(h.jb)||0}</b><small>jobs done</small></div><div><b>${safeHtml(h.x||'New')}</b><small>experience</small></div></div>
+  <h4>About</h4><p>${safeHtml(h.b||'New on House Assist. Ask about the work they can do for you.')}</p>
+  <h4>Services</h4><div>${(h.s||[]).map(x=>`<span class="tag">${safeHtml(x)}</span>`).join('')}</div>
+  <h4>Availability</h4><p>${safeHtml(h.av||'Ask when you get in touch')}</p>
+  <h4>Languages</h4><p>${safeHtml(h.lg||'English')}</p>
+  ${ok?`<div class="pf-num hide" id="pfnum"><small>Tap the number to call</small><a class="btn" href="tel:${tel}">${safeHtml(h.ph)}</a></div>`:''}<div class="pf-act">${ok?`<button class="btn" type="button" id="pfcall">Call</button>`:''}<button class="btn alt" type="button" id="pft">Text</button><button class="btn hire" type="button" id="pfh">Hire ${safeHtml(fn)}</button></div>
  <button class="btn alt" style="width:100%" id="cl" type="button">Close</button></div>`);
  $('#cl').onclick=()=>modal(0);$('#pfh').onclick=()=>hire(h);const pt=$('#pft');if(pt)pt.onclick=()=>openChat(h);const pc=$('#pfcall');if(pc)pc.onclick=()=>{const n=$('#pfnum');n.classList.toggle('hide');if(!n.classList.contains('hide'))n.scrollIntoView({block:'nearest',behavior:'smooth'})};
 }
@@ -207,11 +209,11 @@ function modal(x){const m=$('#modal');m.classList.toggle('hide',!x);if(x){H(m,`<
 function hire(h){P={h,m:'',b:'',cp:0,hp:0};pay()}
 function pay(){
  const {h,m,b}=P,banks=['GCB Bank','Ecobank Ghana','Stanbic Bank','Absa Ghana','Fidelity Bank'],mm=['MTN MoMo','Telecel Cash','AT Money'];
- let body=`<h3 style="font-size:24px">Hire ${h.n}</h3><p class="mut">GH₵ ${h.p} per day · call ${h.ph} to agree the details.</p><label>How will you pay?</label>
+ let body=`<h3 style="font-size:24px">Hire ${safeHtml(h.n)}</h3><p class="mut">GH₵ ${Number(h.p)||0} per day · call ${safeHtml(h.ph||'the house help')} to agree the details.</p><label>How will you pay?</label>
  <button class="opt ${m=='cash'?'on':''}" data-m="cash">Cash</button><button class="opt ${m=='bank'?'on':''}" data-m="bank">Bank payment</button><button class="opt ${m=='momo'?'on':''}" data-m="momo">Mobile money</button>`;
  if(m=='bank')body+=`<label>Choose your bank<select id="bk">${banks.map(x=>`<option ${b==x?'selected':''}>${x}</option>`).join('')}</select></label>`;
  if(m=='momo')body+=`<label>Choose a network<select id="bk">${mm.map(x=>`<option ${b==x?'selected':''}>${x}</option>`).join('')}</select></label>`;
- if(m)body+=`<div class="step"><span class="dot ${P.cp?'ok':''}">${P.cp?'✓':''}</span>You confirm you have paid</div><div class="step"><span class="dot ${P.hp?'ok':''}">${P.hp?'✓':''}</span>${h.n.split(' ')[0]} confirms they received it</div>
+ if(m)body+=`<div class="step"><span class="dot ${P.cp?'ok':''}">${P.cp?'✓':''}</span>You confirm you have paid</div><div class="step"><span class="dot ${P.hp?'ok':''}">${P.hp?'✓':''}</span>${safeHtml(h.n.split(' ')[0])} confirms they received it</div>
  ${P.hp&&P.cp?'<button class="btn" id="rt" style="width:100%">Rate & recommend</button>':
  `<button class="btn" id="paid" style="width:100%" ${P.cp?'disabled':''}>I have paid</button>`}
  <p class="mut" style="font-size:13px;margin-bottom:0">Your confirmation is not proof from the bank or network. Check your own statement too.</p>`;
@@ -223,7 +225,7 @@ function pay(){
  if($('#rt'))$('#rt').onclick=rate;
 }
 function rate(){let n=0;
- modal(`<h3 style="font-size:24px">How was ${P.h.n.split(' ')[0]}?</h3><p class="mut">Give a rating, a recommendation, or both.</p><div class="rate" id="rs">${[1,2,3,4,5].map(i=>`<span data-i="${i}">★</span>`).join('')}</div>
+ modal(`<h3 style="font-size:24px">How was ${safeHtml(P.h.n.split(' ')[0])}?</h3><p class="mut">Give a rating, a recommendation, or both.</p><div class="rate" id="rs">${[1,2,3,4,5].map(i=>`<span data-i="${i}">★</span>`).join('')}</div>
  <label>Recommendation (optional)<input id="rv" placeholder="What went well?"></label><button class="btn" id="sb" style="width:100%">Submit</button>`);
  $('#rs').onclick=e=>{if(e.target.dataset.i){n=+e.target.dataset.i;document.querySelectorAll('#rs span').forEach((s,i)=>s.classList.toggle('on',i<n))}};
  $('#sb').onclick=()=>{if(!n&&!$('#rv').value.trim())return toast('Add a rating or a recommendation first');
@@ -233,14 +235,14 @@ function sos(){modal(`<h3 style="font-size:26px;color:var(--red)">Emergency</h3>
  <p class="mut">Police 191 · Ambulance 193 · Fire 192. Confirm these numbers before launch.</p><button class="btn alt" style="width:100%" id="cl">Close</button>`);$('#cl').onclick=()=>modal(0)}
 
 /* profile + theme */
-const THEMES={Ocean:['#040B18','#0A1730','#EAF1FF','#3B82F6','#F2B632'],Emerald:['#050D0A','#0C1A14','#E8F5EE','#2ECC71','#F2B632'],Night:['#0B1020','#141B33','#E6ECFF','#7C9CFF','#F2B632'],Sunset:['#140A07','#22120D','#FBEDE6','#F2784B','#F2B632'],Violet:['#0B0816','#151026','#EEE9FF','#8B6CF0','#F2B632'],Mono:['#0A0A0A','#161616','#F2F2F2','#E5E5E5','#888888']};
+const THEMES={Ocean:['#f3f9fa','#ffffff','#183943','#08798e','#075b70'],Emerald:['#f1f8f6','#ffffff','#193c38','#087d77','#075b70'],Night:['#eef6f8','#ffffff','#173641','#096d86','#075b70'],Sunset:['#faf6f2','#ffffff','#3d3530','#0b7186','#075b70'],Violet:['#f5f3f9','#ffffff','#302b3b','#08798e','#075b70'],Mono:['#f5f8f9','#ffffff','#24383e','#347c8b','#075b70']};
 function setTheme(a){const r=document.documentElement;r.removeAttribute('data-theme');['--bg','--sf','--ink','--ac','--ac2'].forEach((k,i)=>r.style.setProperty(k,a[i]));
  if(a[0][1]<'5'&&a[0][1]!='F')r.style.colorScheme='dark';else r.style.colorScheme='light'}
 function pfCard(){
- const hp=S.role=='helper',rec=hp?(helpers.find(h=>h.me)||S.user):S.user,bio=rec.b||'',v=x=>esc(String(x||''));
+ const hp=S.role=='helper',rec=hp?(helpers.find(h=>h.me)||S.user):S.user,bio=rec.b??rec.bio??'',v=x=>esc(String(x||''));
  return `<div class="card"><h3>Write your profile</h3><p class="mut" style="margin:6px 0 12px">${hp?'This is what customers see when they press View on your card.':'Tell house helps a little about you and your home.'}</p>
  <label>About me<textarea id="pb" maxlength="400" placeholder="${hp?'Tell customers about your experience, the work you do best and what makes you reliable.':'For example: where you live, the help you need and when.'}">${v(bio)}</textarea></label><div class="mut" id="pbc" style="text-align:right;font-size:12.5px;margin:-2px 0 10px">${bio.length}/400</div>
- ${hp?`<label>Phone number<input id="pph" type="tel" value="${v(rec.ph&&rec.ph!='\u2014'?rec.ph:'')}" placeholder="e.g. 024 000 0000"></label><label>Years of experience<input id="px" value="${v(rec.x)}" placeholder="e.g. 5 years"></label><label>Availability<input id="pav" value="${v(rec.av)}" placeholder="e.g. Mon\u2013Sat, mornings"></label><label>Languages<input id="plg" value="${v(rec.lg)}" placeholder="e.g. English, Twi"></label><label>Price per day (GH\u20b5)<input id="ppr" type="number" min="1" value="${rec.p||''}"></label>`:''}
+  ${hp?`<label>Phone number<input id="pph" type="tel" maxlength="40" value="${v(rec.ph||rec.phone)}" placeholder="e.g. 024 000 0000"></label><label>Years of experience<input id="px" maxlength="80" value="${v(rec.x||rec.experience)}" placeholder="e.g. 5 years"></label><label>Availability<input id="pav" maxlength="120" value="${v(rec.av||rec.availability)}" placeholder="e.g. Mon\u2013Sat, mornings"></label><label>Languages<input id="plg" maxlength="120" value="${v(rec.lg||rec.languages)}" placeholder="e.g. English, Twi"></label><label>Price per day (GH\u20b5)<input id="ppr" type="number" min="1" value="${Number(rec.p||rec.price)||''}"></label>`:''}
  <button class="btn" type="button" id="psave">Save profile</button></div>`}
 function pfBind(){
  const t=$('#pb'),c=$('#pbc');t.oninput=()=>{c.textContent=t.value.length+'/400'};
@@ -250,9 +252,9 @@ function pfBind(){
 }
 function profile(){
  H($('#view'),`<h2>Profile & appearance</h2><p class="sub">Make House Assist look and feel the way you like.</p>
- <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))">${pfCard()}<div class="card"><h3>Your details</h3><div class="av" style="background:${COL[0]};margin:12px 0">${ini(S.user.name)}</div>
- <label>Profile picture<input type="file" accept="image/*"></label><label>Username<input value="${S.user.name}"></label><label>New password<input type="password"></label>
- <button class="btn" onclick="toast('Profile saved')">Save changes</button></div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))">${pfCard()}<div class="card"><h3>Your details</h3><div class="av" style="background:${COL[0]};margin:12px 0">${safeHtml(ini(S.user.name))}</div>
+  <p class="mut">Profile photos will be available when secure image storage is configured.</p><label>Full name<input id="profileUsername" maxlength="40" value="${safeHtml(S.user.name)}"></label><label>Region<input id="profileLocation" maxlength="80" value="${safeHtml(S.user.loc||'')}" placeholder="Your region"></label><label>New password<input id="profilePassword" type="password" autocomplete="new-password"></label>
+  <button class="btn" type="button" id="saveAccountDetails">Save account details</button></div>
  <div class="card"><h3>Colour theme</h3><p class="mut">Pick a preset, then fine-tune any colour.</p><div class="swatch">${Object.entries(THEMES).map(([k,v])=>`<button title="${k}" aria-label="${k} theme" data-t="${k}" style="background:linear-gradient(135deg,${v[0]} 50%,${v[3]} 50%)"></button>`).join('')}</div>
  ${[['Background',0],['Cards',1],['Text',2],['Accent',3]].map(([t,i])=>`<label>${t}<input type="color" data-c="${i}" value="${getComputedStyle(document.documentElement).getPropertyValue(['--bg','--sf','--ink','--ac'][i]).trim().slice(0,7)||'#ffffff'}"></label>`).join('')}</div>
  <div class="card"><h3>Layout</h3><p class="mut">How house-help listings appear.</p><div class="seg" id="lay"><button data-l="grid" class="${S.lay=='grid'?'on':''}">Grid</button><button data-l="list" class="${S.lay=='list'?'on':''}">List</button></div>

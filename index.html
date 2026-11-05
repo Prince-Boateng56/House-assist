@@ -64,7 +64,7 @@
   <div class="lsec" id="contactus"><h2>Contact us &amp; follow us</h2><p class="sub">We would love to hear from you. Reach out any time.</p>
    <div class="g3" id="cinfo"></div>
    <h3 style="margin:26px 0 12px">Follow us</h3><div class="chips" id="csoc"></div>
-   <div class="card" style="margin-top:26px"><h3>Send us a message</h3><label>Your name<input id="cn" autocomplete="name"></label><label>Your email<input id="ce" type="email" autocomplete="email"></label><label>Message<textarea id="cm" placeholder="How can we help?"></textarea></label><button class="btn" type="button" id="cs">Send message</button></div></div>
+   <div class="card" style="margin-top:26px"><h3>Send us a message</h3><label>Your name<input id="cn" autocomplete="name" maxlength="80"></label><label>Your email<input id="ce" type="email" autocomplete="email" maxlength="254"></label><label>Message<textarea id="cm" maxlength="3000" placeholder="How can we help?"></textarea></label><button class="btn" type="button" id="cs">Send message</button></div></div>
   <div class="card" style="text-align:center;padding:40px 20px"><h2 style="font-size:clamp(26px,4vw,40px)">Ready to get started?</h2><p class="lead" style="margin:12px auto 22px">Book in minutes. We handle the rest.</p>
    <div class="ctas" style="justify-content:center"><button class="btn lg" data-go="signup,customer">Book Help Now</button><button class="btn alt lg" data-go="signup,helper">Offer your services</button></div></div>
  </div>
@@ -87,8 +87,8 @@
    <label class="auth-field">Email<input id="em" type="email" autocomplete="email" placeholder="you@example.com"></label>
    <label id="locL" class="auth-field hide">Region<select id="loc"><option value="" disabled selected>Select your region</option><option>Ahafo</option><option>Ashanti</option><option>Bono</option><option>Bono East</option><option>Central</option><option>Eastern</option><option>Greater Accra</option><option>North East</option><option>Northern</option><option>Oti</option><option>Savannah</option><option>Upper East</option><option>Upper West</option><option>Volta</option><option>Western</option><option>Western North</option></select></label>
    <div id="svcL" class="hide auth-helper-fields"><label class="auth-field-label">Services you offer <span>(pick one or more)</span></label><div class="dd multi" id="svcBox"><button type="button" class="ph" aria-haspopup="listbox">Select services</button><ul><li><label><input type="checkbox" value="House Cleaning"><span>House Cleaning</span></label></li><li><label><input type="checkbox" value="Plumbing"><span>Plumbing</span></label></li><li><label><input type="checkbox" value="Electrical"><span>Electrical</span></label></li><li><label><input type="checkbox" value="Mason"><span>Mason</span></label></li><li><label><input type="checkbox" value="Painting"><span>Painting</span></label></li><li><label><input type="checkbox" value="Repairs"><span>Repairs</span></label></li><li><label><input type="checkbox" value="Gardening"><span>Gardening</span></label></li><li><label><input type="checkbox" value="Lawn Care"><span>Lawn Care</span></label></li><li><label><input type="checkbox" value="Laundry"><span>Laundry</span></label></li><li><label><input type="checkbox" value="Ironing"><span>Ironing</span></label></li><li><label><input type="checkbox" value="Cooking"><span>Cooking</span></label></li><li><label><input type="checkbox" value="Kitchen Assist"><span>Kitchen Assist</span></label></li><li><label><input type="checkbox" value="Moving"><span>Moving</span></label></li><li><label><input type="checkbox" value="Packing"><span>Packing</span></label></li><li><label><input type="checkbox" value="Elderly Care"><span>Elderly Care</span></label></li><li><label><input type="checkbox" value="Child Care"><span>Child Care</span></label></li></ul></div><label class="auth-field">Your price per day (GH&#8373;)<input id="pr" type="number" min="1" placeholder="e.g. 120"></label></div>
-   <label class="auth-field auth-password-label" for="pw">Password</label><div class="pwrap auth-password"><input id="pw" type="password" autocomplete="current-password" placeholder="At least 6 characters"><button type="button" id="eye">Show</button></div>
-   <div class="rm auth-remember" id="rmRow"><label><input type="checkbox"> Remember me</label><a id="fg">Forgot password?</a></div>
+   <label class="auth-field auth-password-label" for="pw">Password</label><div class="pwrap auth-password"><input id="pw" type="password" autocomplete="current-password" maxlength="128" placeholder="Enter your password"><button type="button" id="eye">Show</button></div>
+   <div class="rm auth-remember" id="rmRow"><label><input type="checkbox" id="rememberMe"> Remember me</label><a id="fg">Forgot password?</a></div>
    <button class="btn auth-submit" id="go" type="button">Log in <span>&#8594;</span></button>
    <button class="btn alt auth-google" id="googleAuth" type="button"><span class="google-g">G</span> Continue with Google</button>
    <p id="aErr" role="alert" class="auth-error"></p><p class="swl auth-switch-copy" id="swL"></p>
@@ -116,9 +116,9 @@
   <h2>Choose a new password</h2>
   <p class="gs" id="resetPasswordHelp">Enter and confirm your new password.</p>
   <label for="newPassword">New password</label>
-  <input id="newPassword" type="password" autocomplete="new-password" minlength="6" placeholder="At least 6 characters">
+  <input id="newPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" placeholder="At least 10 characters">
   <label for="confirmPassword">Confirm new password</label>
-  <input id="confirmPassword" type="password" autocomplete="new-password" minlength="6" placeholder="Enter it again">
+  <input id="confirmPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" placeholder="Enter it again">
   <button class="btn" style="width:100%;margin-top:12px" id="saveNewPassword" type="button">Save new password</button>
   <p id="resetPasswordMsg" style="color:#FF8A80;min-height:24px;margin:10px 0 0"></p>
  </div>
@@ -161,11 +161,4 @@
 
 <script type="module" src="./components/ui/kinetic-grid.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/script.js"></script><script src="app.js?v=admin-center-5"></script><script src="js/admin-entry.js?v=admin-direct-1"></script>
-<script>
-(()=>{
- const path=window.location.pathname.replace(/\/$/,'');
- if(path!=='/admin'&&path!=='/admin.')return;
- ['land','learn','auth','app'].forEach(id=>document.getElementById(id)?.classList.add('hide'));
- document.getElementById('adminArea')?.classList.remove('hide');
-})();
-</script></body></html>
+</body></html>

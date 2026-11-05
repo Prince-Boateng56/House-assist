@@ -34,6 +34,7 @@ SUPABASE_PUBLISHABLE_KEY = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
 SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
 SUPABASE_JWKS_URL = os.environ.get("SUPABASE_JWKS_URL", "")
 SUPABASE_DB_URL = os.environ.get("SUPABASE_DB_URL", "")
+RATE_LIMIT_SECRET = os.environ.get("HOUSE_ASSIST_RATE_LIMIT_SECRET", "") or SUPABASE_SECRET_KEY or SUPABASE_DB_URL or "house-assist-unconfigured"
 TOKEN_TTL = 60 * 60 * 24 * 14
 SERVICES = {
     "House Cleaning", "Plumbing", "Electrical", "Mason", "Painting", "Repairs",
@@ -41,6 +42,29 @@ SERVICES = {
     "Moving", "Packing", "Elderly Care", "Child Care",
 }
 app = Flask(__name__, static_folder=None)
+app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
+
+
+@app.after_request
+def security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; "
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co; "
+        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
+        "form-action 'self'; upgrade-insecure-requests"
+    )
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+    if request.is_secure or request.headers.get("X-Forwarded-Proto") == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    return response
 
 
 class Database:
@@ -88,7 +112,38 @@ def unique_conflict(exc: pg_errors.UniqueViolation):
 
 
 def body() -> dict[str, Any]:
-    return request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+    return payload if isinstance(payload, dict) else {}
+
+
+def auth_rate_key(bucket: str) -> str:
+    forwarded = request.headers.get("X-Forwarded-For", "").split(",", 1)[0].strip()
+    client_ip = forwarded or request.remote_addr or "unknown"
+    return hashlib.sha256(f"{RATE_LIMIT_SECRET}:{bucket}:{client_ip}".encode("utf-8")).hexdigest()
+
+
+def auth_rate_limit(bucket: str, maximum: int, window_seconds: int = 900):
+    now = int(time.time())
+    key_hash = auth_rate_key(bucket)
+    cutoff = now - window_seconds
+    g.db.execute("DELETE FROM house_assist.auth_attempts WHERE window_started_at<?", (now - 86400,))
+    row = g.db.execute("""INSERT INTO house_assist.auth_attempts AS attempt_row(key_hash,window_started_at,attempts)
+                          VALUES(?,?,1) ON CONFLICT(key_hash) DO UPDATE SET
+                          window_started_at=CASE WHEN attempt_row.window_started_at<=? THEN ? ELSE attempt_row.window_started_at END,
+                          attempts=CASE WHEN attempt_row.window_started_at<=? THEN 1 ELSE attempt_row.attempts+1 END
+                          RETURNING window_started_at,attempts""",
+                       (key_hash, now, cutoff, now, cutoff)).fetchone()
+    g.db.commit()
+    if row["attempts"] <= maximum:
+        return None
+    retry_after = max(1, int(row["window_started_at"]) + window_seconds - now)
+    response = error("Too many attempts. Wait a little and try again.", 429)
+    response[0].headers["Retry-After"] = str(retry_after)
+    return response
+
+
+def clear_auth_rate_limit(bucket: str) -> None:
+    g.db.execute("DELETE FROM house_assist.auth_attempts WHERE key_hash=?", (auth_rate_key(bucket),))
 
 
 def password_hash(password: str, salt: bytes | None = None) -> str:
@@ -191,11 +246,6 @@ def unique_google_username(preferred: str, email: str, exclude_user_id: Any = No
     raise RuntimeError("Could not create a unique username for this Google account.")
 
 
-def auth_email(username: str) -> str:
-    """Compatibility identity for administrator-created password accounts."""
-    return f"{username.lower()}@accounts.house-assist.local"
-
-
 def supabase_request(path: str, payload: dict[str, Any], *, admin: bool = False) -> dict[str, Any]:
     if not SUPABASE_URL:
         raise RuntimeError("Set SUPABASE_URL on the server.")
@@ -242,8 +292,8 @@ def delete_supabase_user(user_id: Any) -> None:
     )
     try:
         urllib.request.urlopen(req, timeout=15).close()
-    except urllib.error.HTTPError:
-        pass
+    except Exception:
+        app.logger.exception("Could not remove an incomplete Supabase account")
 
 
 def update_supabase_user(user_id: Any, payload: dict[str, Any]) -> None:
@@ -265,6 +315,7 @@ def update_supabase_user(user_id: Any, payload: dict[str, Any]) -> None:
 
 def token_for(role: str, user_id: Any | None = None, *, ttl: int = TOKEN_TTL) -> str:
     token = secrets.token_urlsafe(32)
+    g.db.execute("DELETE FROM house_assist.sessions WHERE expires_at<?", (int(time.time()),))
     g.db.execute("INSERT INTO house_assist.sessions(token_hash,user_id,role,expires_at) VALUES(?,?,?,?)",
                  (hashlib.sha256(token.encode()).hexdigest(), user_id, role, int(time.time()) + ttl))
     g.db.commit()
@@ -307,10 +358,11 @@ def auth_required(role: str | None = None):
     return user, None
 
 
-def helper_json(row):
+def helper_json(row, *, reveal_contact: bool = False):
     return {"id": row["id"], "n": row["name"], "l": row["location"],
             "s": json.loads(row["services"]), "p": row["price"], "r": round(row["rating"]),
-            "ph": row["phone"] or "Contact after connecting", "h": 1 if row["user_id"] else 0}
+            "ph": (row["phone"] or "") if reveal_contact else "", "h": 1 if row["user_id"] else 0,
+            "b": row["bio"], "x": row["experience"], "av": row["availability"], "lg": row["languages"]}
 
 
 @app.get("/")
@@ -341,7 +393,36 @@ def frontend_asset(filename: str):
 
 @app.get("/api/health")
 def health():
-    return jsonify({"ok": True})
+    try:
+        g.db = connect()
+        g.db.execute("SELECT 1").fetchone()
+    except Exception:
+        app.logger.exception("Health check could not reach the database")
+        return jsonify({"ok": False, "database": "unavailable"}), 503
+    return jsonify({"ok": True, "database": "available"})
+
+
+@app.post("/api/contact")
+def create_contact_message():
+    limited = auth_rate_limit("contact", 5, 3600)
+    if limited:
+        return limited
+    data = body()
+    raw_name, raw_email, raw_message = data.get("name", ""), data.get("email", ""), data.get("message", "")
+    if not isinstance(raw_name, str) or not isinstance(raw_email, str) or not isinstance(raw_message, str):
+        return error("Enter your name, a valid email address, and a message.")
+    name, email, message = raw_name.strip(), raw_email.strip().lower(), raw_message.strip()
+    if not name or len(name) > 80:
+        return error("Enter your name (up to 80 characters).")
+    if email and (len(email) > 254 or not valid_email(email)):
+        return error("Enter a valid email address or leave it blank.")
+    if not message or len(message) > 3000:
+        return error("Your message must contain between 1 and 3,000 characters.")
+    row = g.db.execute("""INSERT INTO house_assist.contact_messages(name,email,body,created_at)
+                          VALUES(?,?,?,?) RETURNING id""",
+                       (name, email, message, int(time.time()))).fetchone()
+    g.db.commit()
+    return jsonify({"ok": True, "id": row["id"]}), 201
 
 
 @app.get("/api/auth/config")
@@ -353,14 +434,17 @@ def auth_config():
 
 @app.post("/api/auth/register")
 def register():
+    limited = auth_rate_limit("register", 5, 3600)
+    if limited:
+        return limited
     data = body()
     username, password = str(data.get("username", "")).strip(), str(data.get("password", ""))
     email = str(data.get("email", "")).strip().lower()
     role, location = data.get("role"), str(data.get("location", "")).strip()
     if len(username) < 2 or len(username) > 40:
         return error("Username must be between 2 and 40 characters.")
-    if len(password) < 6:
-        return error("Password needs at least 6 characters.")
+    if len(password) < 10 or len(password) > 128:
+        return error("Password must contain 10 to 128 characters.")
     if not valid_email(email):
         return error("Enter a valid email address.")
     if role not in ("customer", "helper"):
@@ -377,6 +461,7 @@ def register():
         price = 0
     if role == "helper" and (not services or any(service not in SERVICES for service in services) or price < 1):
         return error("Choose a service and add a valid daily price.")
+    user_id = None
     try:
         auth_user = supabase_request("admin/users", {
             "email": email,
@@ -388,30 +473,46 @@ def register():
         g.db.execute("INSERT INTO house_assist.users(id,username,email,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?,?)",
                      (user_id, username, email, None, role, location, int(time.time())))
         g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (user_id,))
+        if role == "helper":
+            g.db.execute("INSERT INTO house_assist.helpers(user_id,name,location,services,price) VALUES(?,?,?,?,?)",
+                         (user_id, username, location, json.dumps(services), price))
+        g.db.commit()
     except ValueError as exc:
         g.db.rollback()
+        if user_id:
+            delete_supabase_user(user_id)
         return error(str(exc), 409)
     except pg_errors.UniqueViolation as exc:
         g.db.rollback()
-        if "user_id" in locals():
+        if user_id:
             delete_supabase_user(user_id)
         return unique_conflict(exc)
     except (KeyError, RuntimeError) as exc:
         g.db.rollback()
+        if user_id:
+            delete_supabase_user(user_id)
         return error(str(exc), 503)
-    if role == "helper":
-        g.db.execute("INSERT INTO house_assist.helpers(user_id,name,location,services,price) VALUES(?,?,?,?,?)",
-                     (user_id, username, location, json.dumps(services), price))
-    g.db.commit()
+    except Exception:
+        g.db.rollback()
+        if user_id:
+            delete_supabase_user(user_id)
+        app.logger.exception("Account provisioning failed")
+        return error("The account could not be completed. Please try again.", 503)
+    clear_auth_rate_limit("register")
     token = token_for(role, user_id)
     return jsonify({"token": token, "user": {"id": user_id, "name": username, "role": role, "loc": location}}), 201
 
 
 @app.post("/api/auth/login")
 def login():
+    limited = auth_rate_limit("login", 8)
+    if limited:
+        return limited
     data = body()
     username, password, role = str(data.get("username", "")).strip(), str(data.get("password", "")), data.get("role")
     email = str(data.get("email", "")).strip().lower()
+    if len(password) > 128:
+        return error("Password cannot exceed 128 characters.")
     if not valid_email(email):
         return error("Enter a valid email address.")
     row = g.db.execute("SELECT * FROM house_assist.users WHERE lower(username)=lower(?)", (username,)).fetchone()
@@ -440,6 +541,7 @@ def login():
             return error(str(exc), 503)
     if role != row["role"]:
         return error("That account uses a different sign-in option.", 403)
+    clear_auth_rate_limit("login")
     token = token_for(row["role"], row["id"])
     return jsonify({"token": token, "user": {"id": row["id"], "name": row["username"], "role": row["role"], "loc": row["location"]}})
 
@@ -538,15 +640,39 @@ def logout():
     return jsonify({"ok": True})
 
 
+@app.post("/api/auth/password-reset-complete")
+def password_reset_complete():
+    auth = request.headers.get("Authorization", "")
+    access_token = auth[7:] if auth.lower().startswith("bearer ") else ""
+    if not access_token:
+        return error("The password reset session is missing.", 401)
+    try:
+        auth_user = supabase_user(access_token)
+    except (ValueError, RuntimeError) as exc:
+        return error(str(exc), 401)
+    user_id = auth_user.get("id")
+    if not user_id:
+        return error("The password reset session is invalid.", 401)
+    g.db.execute("DELETE FROM house_assist.sessions WHERE user_id=?", (user_id,))
+    g.db.commit()
+    return jsonify({"ok": True})
+
+
 @app.get("/api/me")
 def me():
     user, problem = auth_required()
     if problem:
         return problem
     pref = g.db.execute("SELECT * FROM house_assist.preferences WHERE user_id=?", (user["id"],)).fetchone()
-    return jsonify({"id": user["id"], "name": user["username"], "role": user["role"], "loc": user["location"],
-                    "theme": pref["theme"], "layout": pref["layout"], "compact": bool(pref["compact"]),
-                    "colors": json.loads(pref["colors"])})
+    profile = {"id": user["id"], "name": user["username"], "role": user["role"], "loc": user["location"],
+               "bio": user["bio"], "theme": pref["theme"], "layout": pref["layout"],
+               "compact": bool(pref["compact"]), "colors": json.loads(pref["colors"])}
+    if user["role"] == "helper":
+        helper = g.db.execute("SELECT phone,bio,experience,availability,languages,price FROM house_assist.helpers WHERE user_id=?", (user["id"],)).fetchone()
+        if helper:
+            profile.update({"phone": helper["phone"], "bio": helper["bio"], "experience": helper["experience"],
+                            "availability": helper["availability"], "languages": helper["languages"], "price": helper["price"]})
+    return jsonify(profile)
 
 
 @app.patch("/api/me")
@@ -556,23 +682,57 @@ def update_me():
         return problem
     data = body()
     username = str(data.get("username", user["username"])).strip()
+    location = str(data.get("location", user["location"])).strip()
+    bio = str(data.get("bio", user["bio"] or "")).strip()
     if len(username) < 2 or len(username) > 40:
         return error("Username must be between 2 and 40 characters.")
+    if not location or len(location) > 80:
+        return error("Enter a region up to 80 characters.")
+    if len(bio) > 400:
+        return error("Your profile introduction must be 400 characters or fewer.")
+    pref = g.db.execute("SELECT * FROM house_assist.preferences WHERE user_id=?", (user["id"],)).fetchone()
+    if not pref:
+        return error("Your profile preferences are missing. Contact House Assist support.", 409)
+    theme = str(data.get("theme", pref["theme"]))
+    layout = str(data.get("layout", pref["layout"]))
+    compact = data.get("compact", bool(pref["compact"]))
+    colors = data.get("colors", json.loads(pref["colors"]))
+    if theme not in {"Ocean", "Emerald", "Night", "Sunset", "Violet", "Mono", "Custom"}:
+        return error("Choose a valid profile theme.")
+    if layout not in {"grid", "list"}:
+        return error("Choose a valid listing layout.")
+    if not isinstance(compact, bool):
+        return error("Choose a valid compact layout setting.")
+    if not isinstance(colors, list) or len(colors) not in (0, 4) or any(not isinstance(c, str) or not re.fullmatch(r"#[0-9A-Fa-f]{6}", c) for c in colors):
+        return error("Choose valid profile colours.")
+    helper = None
+    helper_values = None
+    if user["role"] == "helper":
+        helper = g.db.execute("SELECT * FROM house_assist.helpers WHERE user_id=?", (user["id"],)).fetchone()
+        if not helper:
+            return error("Your house-help listing is missing. Contact House Assist support.", 409)
+        phone = str(data.get("phone", helper["phone"] or "")).strip()[:40]
+        experience = str(data.get("experience", helper["experience"] or "")).strip()[:80]
+        availability = str(data.get("availability", helper["availability"] or "")).strip()[:120]
+        languages = str(data.get("languages", helper["languages"] or "")).strip()[:120]
+        price = data.get("price", helper["price"])
+        if isinstance(price, bool) or not isinstance(price, int) or price < 1:
+            return error("Daily price must be a positive whole number.")
+        helper_values = (username, location, bio, phone, experience, availability, languages, price, user["id"])
     try:
-        g.db.execute("UPDATE house_assist.users SET username=?,location=? WHERE id=?",
-                     (username, str(data.get("location", user["location"])).strip(), user["id"]))
+        g.db.execute("UPDATE house_assist.users SET username=?,location=?,bio=? WHERE id=?",
+                     (username, location, bio, user["id"]))
         if user["role"] == "helper":
-            g.db.execute("UPDATE house_assist.helpers SET name=?,location=? WHERE user_id=?", (username, str(data.get("location", user["location"])).strip(), user["id"]))
+            g.db.execute("UPDATE house_assist.helpers SET name=?,location=?,bio=?,phone=?,experience=?,availability=?,languages=?,price=? WHERE user_id=?", helper_values)
         if data.get("password"):
-            if len(str(data["password"])) < 6:
-                return error("Password needs at least 6 characters.")
+            if len(str(data["password"])) < 10 or len(str(data["password"])) > 128:
+                return error("Password must contain 10 to 128 characters.")
             update_supabase_user(user["id"], {"password": str(data["password"])})
-        pref = g.db.execute("SELECT colors FROM house_assist.preferences WHERE user_id=?", (user["id"],)).fetchone()
-        colors = data.get("colors", json.loads(pref["colors"]))
-        if not isinstance(colors, list) or len(colors) not in (0, 4) or any(not isinstance(c, str) or len(c) != 7 or not c.startswith("#") for c in colors):
-            return error("Choose valid profile colours.")
+            current_token = request.headers.get("Authorization", "")[7:]
+            current_hash = hashlib.sha256(current_token.encode()).hexdigest()
+            g.db.execute("DELETE FROM house_assist.sessions WHERE user_id=? AND token_hash<>?", (user["id"], current_hash))
         g.db.execute("UPDATE house_assist.preferences SET theme=?,layout=?,compact=?,colors=? WHERE user_id=?",
-                     (str(data.get("theme", "Ocean")), str(data.get("layout", "grid")), bool(data.get("compact", False)), json.dumps(colors), user["id"]))
+                     (theme, layout, compact, json.dumps(colors), user["id"]))
         g.db.commit()
     except pg_errors.UniqueViolation as exc:
         g.db.rollback()
@@ -588,10 +748,88 @@ def list_helpers():
     order = "price ASC" if sort == "low" else "price DESC" if sort == "high" else "rating DESC, rating_count DESC"
     rows = g.db.execute(f"SELECT * FROM house_assist.helpers WHERE (name ILIKE ? OR location ILIKE ?) ORDER BY {order}",
                         (f"%{query}%", f"%{query}%")).fetchall()
-    items = [helper_json(row) for row in rows]
+    viewer = current_user(required=False)
+    reveal_contact = bool(viewer and viewer["session_role"] == "customer")
+    items = [helper_json(row, reveal_contact=reveal_contact) for row in rows]
     if service:
         items = [item for item in items if service in item["s"]]
     return jsonify(items)
+
+
+@app.route("/api/threads", methods=["GET", "POST"])
+def threads():
+    user, problem = auth_required()
+    if problem:
+        return problem
+    role = user["session_role"]
+    if request.method == "POST":
+        if role != "customer":
+            return error("Only customers can start a conversation.", 403)
+        helper_id = body().get("helper_id")
+        if isinstance(helper_id, bool):
+            return error("Choose a valid house help.")
+        try:
+            helper_id = int(helper_id)
+        except (TypeError, ValueError):
+            return error("Choose a valid house help.")
+        helper = g.db.execute("SELECT id,user_id FROM house_assist.helpers WHERE id=?", (helper_id,)).fetchone()
+        if not helper or not helper["user_id"]:
+            return error("This house help is not available for messages yet.", 404)
+        now = int(time.time())
+        row = g.db.execute("""INSERT INTO house_assist.threads(customer_id,helper_id,created_at,last_message_at)
+                              VALUES(?,?,?,?) ON CONFLICT(customer_id,helper_id)
+                              DO UPDATE SET helper_id=excluded.helper_id RETURNING id""",
+                           (user["id"], helper_id, now, now)).fetchone()
+        g.db.commit()
+        return jsonify({"id": row["id"]}), 201
+    if role == "customer":
+        rows = g.db.execute("""SELECT t.id,t.last_message_at,h.id helper_id,h.name peer_name,
+                                     (SELECT m.body FROM house_assist.messages m WHERE m.thread_id=t.id ORDER BY m.created_at DESC,m.id DESC LIMIT 1) last_message
+                              FROM house_assist.threads t JOIN house_assist.helpers h ON h.id=t.helper_id
+                              WHERE t.customer_id=? ORDER BY t.last_message_at DESC LIMIT 100""", (user["id"],)).fetchall()
+    elif role == "helper":
+        rows = g.db.execute("""SELECT t.id,t.last_message_at,t.helper_id,c.username peer_name,
+                                     (SELECT m.body FROM house_assist.messages m WHERE m.thread_id=t.id ORDER BY m.created_at DESC,m.id DESC LIMIT 1) last_message
+                              FROM house_assist.threads t JOIN house_assist.helpers h ON h.id=t.helper_id
+                              JOIN house_assist.users c ON c.id=t.customer_id
+                              WHERE h.user_id=? ORDER BY t.last_message_at DESC LIMIT 100""", (user["id"],)).fetchall()
+    else:
+        return error("Messages are not available for this account.", 403)
+    return jsonify([{"id": row["id"], "helper_id": row["helper_id"], "peer_name": row["peer_name"],
+                     "last_message": row["last_message"] or "No messages yet", "last_message_at": row["last_message_at"]}
+                    for row in rows])
+
+
+@app.route("/api/threads/<int:thread_id>/messages", methods=["GET", "POST"])
+def thread_messages(thread_id: int):
+    user, problem = auth_required()
+    if problem:
+        return problem
+    thread = g.db.execute("""SELECT t.id FROM house_assist.threads t
+                            JOIN house_assist.helpers h ON h.id=t.helper_id
+                            WHERE t.id=? AND (t.customer_id=? OR h.user_id=?)""",
+                          (thread_id, user["id"], user["id"])).fetchone()
+    if not thread:
+        return error("Conversation was not found.", 404)
+    if request.method == "GET":
+        rows = g.db.execute("""SELECT id,sender_id,body,created_at FROM house_assist.messages
+                              WHERE thread_id=? ORDER BY created_at DESC,id DESC LIMIT 100""", (thread_id,)).fetchall()
+        messages = [{"id": row["id"], "body": row["body"], "created_at": row["created_at"],
+                     "mine": str(row["sender_id"]) == str(user["id"])} for row in reversed(rows)]
+        return jsonify(messages)
+    message = body().get("body")
+    if not isinstance(message, str):
+        return error("Enter a message before sending.")
+    message = message.strip()
+    if not message or len(message) > 2000:
+        return error("Messages must contain between 1 and 2,000 characters.")
+    now = int(time.time())
+    row = g.db.execute("INSERT INTO house_assist.messages(thread_id,sender_id,body,created_at) VALUES(?,?,?,?) RETURNING id",
+                       (thread_id, user["id"], message, now)).fetchone()
+    g.db.execute("UPDATE house_assist.threads SET last_message_at=? WHERE id=?", (now, thread_id))
+    g.db.commit()
+    return jsonify({"id": row["id"], "body": message, "created_at": now,
+                    "mine": True}), 201
 
 
 @app.get("/api/guide")
@@ -694,12 +932,16 @@ def add_rating(hire_id: int):
 
 @app.post("/api/admin/session")
 def admin_login():
+    limited = auth_rate_limit("admin", 5)
+    if limited:
+        return limited
     pin = str(body().get("pin", ""))
     expected = os.environ.get("HOUSE_ASSIST_ADMIN_PIN", "")
     if not expected:
         return error("Admin access is not configured. Set HOUSE_ASSIST_ADMIN_PIN on the server.", 503)
     if not hmac.compare_digest(pin, expected):
         return error("Access code not recognised.", 401)
+    clear_auth_rate_limit("admin")
     return jsonify({"token": token_for("admin", ttl=60 * 60)})
 
 
@@ -819,6 +1061,30 @@ def admin_list_ratings():
     return jsonify([dict(row) for row in rows])
 
 
+@app.get("/api/admin/contact")
+def admin_list_contact_messages():
+    _admin, problem = auth_required("admin")
+    if problem:
+        return problem
+    rows = g.db.execute("""SELECT id,name,email,body,created_at,read_at
+                          FROM house_assist.contact_messages
+                          ORDER BY (read_at IS NOT NULL),created_at DESC LIMIT 200""").fetchall()
+    return jsonify([dict(row) for row in rows])
+
+
+@app.patch("/api/admin/contact/<int:message_id>")
+def admin_mark_contact_message(message_id: int):
+    _admin, problem = auth_required("admin")
+    if problem:
+        return problem
+    row = g.db.execute("UPDATE house_assist.contact_messages SET read_at=? WHERE id=? RETURNING id",
+                       (int(time.time()), message_id)).fetchone()
+    if not row:
+        return error("Contact message was not found.", 404)
+    g.db.commit()
+    return jsonify({"ok": True})
+
+
 @app.post("/api/admin/users")
 def admin_add_user():
     _admin, problem = auth_required("admin")
@@ -826,32 +1092,43 @@ def admin_add_user():
         return problem
     data = body()
     name = str(data.get("username", "")).strip()
+    email = str(data.get("email", "")).strip().lower()
     password = str(data.get("password", ""))
-    if len(name) < 2:
-        return error("Enter a username to add.")
-    if len(password) < 6:
-        return error("Set a temporary password with at least 6 characters.")
+    if len(name) < 2 or len(name) > 40:
+        return error("Enter a username between 2 and 40 characters.")
+    if not valid_email(email):
+        return error("Enter a valid email address for this customer.")
+    if len(password) < 10 or len(password) > 128:
+        return error("Set a temporary password with 10 to 128 characters.")
     user_id = None
     try:
         auth_user = supabase_request("admin/users", {
-            "email": auth_email(name),
+            "email": email,
             "password": password,
             "email_confirm": True,
             "user_metadata": {"username": name, "role": "customer", "location": "Accra"},
         }, admin=True)
         user_id = auth_user["id"]
         g.db.execute("INSERT INTO house_assist.users(id,username,email,password_hash,role,location,created_at) VALUES(?,?,?,?,?,?,?)",
-                     (user_id, name, auth_email(name), None, "customer", "Accra", int(time.time())))
+                     (user_id, name, email, None, "customer", "Accra", int(time.time())))
         g.db.execute("INSERT INTO house_assist.preferences(user_id) VALUES(?)", (user_id,))
         g.db.commit()
     except (ValueError, RuntimeError) as exc:
         g.db.rollback()
+        if user_id:
+            delete_supabase_user(user_id)
         return error(str(exc), 409 if isinstance(exc, ValueError) else 503)
     except pg_errors.UniqueViolation as exc:
         g.db.rollback()
         if user_id:
             delete_supabase_user(user_id)
         return unique_conflict(exc)
+    except Exception:
+        g.db.rollback()
+        if user_id:
+            delete_supabase_user(user_id)
+        app.logger.exception("Administrator account creation failed")
+        return error("The account could not be completed. Please try again.", 503)
     return jsonify({"ok": True}), 201
 
 

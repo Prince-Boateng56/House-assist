@@ -4,21 +4,20 @@ House Assist is a single-page UI with a Flask API and Supabase Postgres database
 
 ## Create the Supabase tables
 
-Open the Supabase project’s SQL Editor, paste in [`supabase/schema.sql`](supabase/schema.sql), and run it. It creates empty tables in the `house_assist` schema; it does not alter existing tables in `public` or add sample helpers or demo users. Row Level Security is enabled because the app accesses the database only through its backend.
+Open the Supabase project’s SQL Editor, paste in [`supabase/schema.sql`](supabase/schema.sql), and run it. It creates the empty tables in the `house_assist` schema and adds the newer profile and messaging columns and tables there. It does not alter tables in `public` or add sample helpers or demo users. Row Level Security is enabled because the app accesses the database only through its backend. Re-run this file after pulling schema changes.
 
 ## Run locally
 
-The repository uses a local `.env` file for the private database connection string. It is ignored by Git. Install the requirements, set the admin password in the server environment, and start the server:
+Copy [`.env.example`](.env.example) to `.env` and fill in the Supabase project URL, publishable key, secret key, database URL, and a long, private administrator password. `.env` is ignored by Git. Install the requirements and start the server:
 
 ```powershell
-python -m pip install -r backend/requirements.txt
-$env:HOUSE_ASSIST_ADMIN_PIN = "choose-a-private-admin-password"
+python -m pip install -r requirements.txt
 python backend/app.py
 ```
 
 Open <http://127.0.0.1:5000>. Keep the database connection string on the server; never put it in browser code or commit it to the project. Run [`supabase/schema.sql`](supabase/schema.sql) once in the Supabase SQL Editor to create the tables.
 
-The API stores accounts, helper listings, sessions, hires, payment confirmations, ratings, profile preferences, and branding in Supabase. Payment confirmations are self-reported; this app does not process payments.
+The API stores accounts, helper listings, sessions, hires, payment confirmations, ratings, contact messages, profile preferences, and branding in Supabase. Contact messages are available in the administrator’s Contact inbox. Payment confirmations are self-reported; this app does not process payments. The current password signup flow confirms accounts automatically; enable an email confirmation flow and configure SMTP before launch if verified email ownership is required. Password recovery also requires working Supabase email delivery.
 
 Authentication uses Supabase Auth for passwords and the private `house_assist` schema for application profiles and roles. Run the updated schema after pulling changes. Accounts created before this authentication change are legacy records and must be recreated or have their password reset before they can use Supabase Auth.
 
@@ -30,7 +29,7 @@ Manual sign-in users can select **Forgot password?** to request a recovery email
 
 ### Administrator access
 
-The administrator page is available at <https://house-assist-omega.vercel.app/admin.>. The app menu does not contain an administrator entry; the backend issues an admin session only after validating the password configured in the server environment.
+The administrator page is available at <https://house-assist-omega.vercel.app/admin.>. The app menu does not contain an administrator entry; the backend issues an admin session only after validating the password configured in the server environment. Admin-created customer accounts require a real email address and a temporary password; share that password through a secure channel.
 
 ### Enable Google sign-in
 
@@ -61,11 +60,17 @@ After changing the provider credentials, retry in a private browser window so an
 
 ## Deploy to Vercel
 
-The static frontend is served by Vercel and the Flask API is exposed as the Python function in [`api/index.py`](api/index.py). In the Vercel project settings, add these environment variables:
+The frontend and Flask API use the same Supabase project. Add all of these server-side environment variables in Vercel:
 
 - `SUPABASE_DB_URL`
+- `SUPABASE_URL`
+- `SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY`
 - `HOUSE_ASSIST_ADMIN_PIN`
+- `HOUSE_ASSIST_RATE_LIMIT_SECRET` (use an independent random value)
 
-Use the same Supabase connection string as the local deployment. Set `HOUSE_ASSIST_ADMIN_PIN` to the chosen admin password in Vercel's Environment Variables. Never commit `.env`, the admin password, or the database URL to the repository or expose them in browser code.
+Use a pooled Supabase PostgreSQL connection string for serverless deployments when available. Set a unique administrator password and an independent random rate-limit secret. Never commit `.env`, the admin password, the Supabase secret key, or the database URL, and never expose them in browser code. The publishable key is intentionally returned to the browser for Supabase Auth.
 
-Import the repository into Vercel and deploy from the repository root. After deployment, verify `https://your-domain.vercel.app/api/health`, then run [`supabase/schema.sql`](supabase/schema.sql) in Supabase if the tables are not already created.
+After updating `supabase/schema.sql`, run it in the Supabase SQL Editor so the profile and messaging tables are present. Import the repository into Vercel and deploy from the repository root. Verify `/api/health`, login configuration at `/api/auth/config`, the landing page images, and authenticated customer and helper flows.
+
+Before public launch, add House Assist’s approved phone, email, address, privacy notice, and service terms. Confirm emergency contact information and the house-help vetting process. Profile photo uploads need a private, access-controlled storage bucket before they can be enabled.

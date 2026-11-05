@@ -2,12 +2,14 @@
 (() => {
   const API = '/api';
   const TOKEN_KEY = 'house-assist-token';
+  const SESSION_TOKEN_KEY = 'house-assist-session-token';
+  const safeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const requestedPath = window.location.pathname.replace(/\/$/, '');
   const isAdminPath = requestedPath === '/admin.' || requestedPath === '/admin';
-  let token = isAdminPath ? '' : (localStorage.getItem(TOKEN_KEY) || '');
+  let token = isAdminPath ? '' : (localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(SESSION_TOKEN_KEY) || '');
   const request = async (path, options = {}) => {
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
     const response = await fetch(API + path, { ...options, headers });
     let value = null;
     if (response.status !== 204) {
@@ -27,7 +29,11 @@
   const storeToken = value => {
     token = value || '';
     if (isAdminPath) return;
-    if (token) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    if (!token) return;
+    const remember = S.mode === 'signup' || $('#rememberMe')?.checked;
+    (remember ? localStorage : sessionStorage).setItem(remember ? TOKEN_KEY : SESSION_TOKEN_KEY, token);
   };
   const showError = err => toast(err.message);
   const GOOGLE_PENDING_KEY = 'house-assist-google-pending';
@@ -219,7 +225,7 @@
     const confirmation = $('#confirmPassword').value;
     const message = $('#resetPasswordMsg');
     message.textContent = '';
-    if (password.length < 6) { message.textContent = 'Your password must contain at least 6 characters.'; return; }
+    if (password.length < 10 || password.length > 128) { message.textContent = 'Your password must contain 10 to 128 characters.'; return; }
     if (password !== confirmation) { message.textContent = 'The passwords do not match.'; return; }
     if (!recoverySession || !supabaseClient) { message.textContent = 'This reset session is no longer valid. Request a new reset link.'; return; }
     const button = $('#saveNewPassword');
@@ -228,6 +234,14 @@
     try {
       const { error } = await supabaseClient.auth.updateUser({ password });
       if (error) throw error;
+      const { data: recovery, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!recovery.session?.access_token) throw new Error('The password changed, but its session could not be verified. Sign in again and contact support if this keeps happening.');
+      await request('/auth/password-reset-complete', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${recovery.session.access_token}` },
+        body: '{}',
+      });
       let pending = {};
       try { pending = JSON.parse(localStorage.getItem(RESET_PENDING_KEY) || '{}'); } catch { /* ignore invalid local state */ }
       localStorage.removeItem(RESET_PENDING_KEY);
@@ -260,7 +274,7 @@
     } catch (err) { console.warn('Could not load price guide:', err.message); }
   }
   const applyUser = user => {
-    S.user = { id: user.id, name: user.name, loc: user.loc };
+    S.user = { ...user, id: user.id, name: user.name, loc: user.loc };
     S.role = user.role;
     $('#who').textContent = `${user.name} · ${user.role === 'helper' ? 'House help' : 'Customer'}`;
     $('#auth').classList.add('hide'); $('#land').classList.add('hide'); $('#app').classList.remove('hide');
@@ -278,6 +292,20 @@
     document.head.append(icon);
   };
 
+  $('#cs').onclick = async () => {
+    const button = $('#cs');
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+      await request('/contact', { method: 'POST', body: JSON.stringify({
+        name: $('#cn').value.trim(), email: $('#ce').value.trim(), message: $('#cm').value.trim(),
+      }) });
+      $('#cm').value = '';
+      toast('Your message was sent to House Assist.');
+    } catch (err) { showError(err); }
+    finally { button.disabled = false; }
+  };
+
   $('#go').onclick = async () => {
     $('#em').readOnly = false;
     const username = $('#u').value.trim(), email = $('#em').value.trim(), password = $('#pw').value;
@@ -286,7 +314,8 @@
     $('#aErr').textContent = '';
     if (!username) return reportError($('#aErr'), new Error('Enter your username.'));
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reportError($('#aErr'), new Error('Enter a valid email address.'));
-    if (password.length < 6) return reportError($('#aErr'), new Error('Password needs at least 6 characters.'));
+    if (signup && (password.length < 10 || password.length > 128)) return reportError($('#aErr'), new Error('Password must contain 10 to 128 characters.'));
+    if (!signup && (!password || password.length > 128)) return reportError($('#aErr'), new Error('Enter a password of 1 to 128 characters.'));
     const details = { username, email, password, role: S.role };
     if (signup) {
       details.location = $('#loc').value.trim();
@@ -310,12 +339,21 @@
     } catch (err) { reportError($('#aErr'), err); }
   };
 
-  // Clear the saved session before the original menu handler reloads the page.
-  document.addEventListener('click', e => {
-    if (e.target.closest('#drawer [data-k="out"]')) {
-      const old = token; storeToken('');
-      if (old) fetch(API + '/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${old}` } }).catch(() => {});
+  // Revoke the server session before leaving the dashboard.
+  document.addEventListener('click', async e => {
+    if (!e.target.closest('#drawer [data-k="out"]')) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const old = token;
+    storeToken('');
+    if (old) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      try { await fetch(API + '/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${old}` }, signal: controller.signal }); }
+      catch { /* The local session is already cleared; continue if the API is offline. */ }
+      finally { clearTimeout(timeout); }
     }
+    window.location.assign('/');
   }, true);
 
   const originalHome = home;
@@ -328,7 +366,7 @@
       const hires = await request('/helper/hires');
       const box = document.createElement('section');
       box.className = 'helper-requests dash-section';
-      box.innerHTML = `<h2 style="margin-top:28px">Hire requests</h2><p class="sub">Confirm receipt after you have received payment.</p><div class="grid">${hires.map(h => `<div class="card"><b>${h.customer}</b><div class="mut">${h.location} · GH₵ ${h.price}/day</div><div class="mut" style="margin:8px 0">${h.customer_paid ? 'Customer marked payment as sent' : 'Waiting for customer payment confirmation'} · ${h.payment_method}</div>${h.customer_paid && !h.helper_received ? `<button class="btn" data-received="${h.id}">Confirm received</button>` : h.helper_received ? '<span class="pill">Confirmed</span>' : ''}</div>`).join('') || '<p class="mut">No hire requests yet.</p>'}</div>`;
+      box.innerHTML = `<h2 style="margin-top:28px">Hire requests</h2><p class="sub">Confirm receipt after you have received payment.</p><div class="grid">${hires.map(h => `<div class="card"><b>${safeHtml(h.customer)}</b><div class="mut">${safeHtml(h.location)} · GH₵ ${Number(h.price)||0}/day</div><div class="mut" style="margin:8px 0">${h.customer_paid ? 'Customer marked payment as sent' : 'Waiting for customer payment confirmation'} · ${safeHtml(h.payment_method)}</div>${h.customer_paid && !h.helper_received ? `<button class="btn" data-received="${Number(h.id)}">Confirm received</button>` : h.helper_received ? '<span class="pill">Confirmed</span>' : ''}</div>`).join('') || '<p class="mut">No hire requests yet.</p>'}</div>`;
       $('#view').append(box);
       box.onclick = async e => {
         const button = e.target.closest('[data-received]'); if (!button) return;
@@ -338,6 +376,69 @@
       };
     } catch (err) { if (err.message !== 'Please log in to continue.') showError(err); }
   }
+
+  let messageRefreshTimer = null;
+  let messageRenderRun = 0;
+  const messageTime = value => new Date(Number(value) * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  openChat = async function (helper) {
+    try {
+      const thread = await request('/threads', { method: 'POST', body: JSON.stringify({ helper_id: helper.id }) });
+      S.chat = thread.id;
+      go('messages');
+    } catch (err) { showError(err); }
+  };
+  messages = async function () {
+    clearTimeout(messageRefreshTimer);
+    const run = ++messageRenderRun;
+    const root = $('#view');
+    const previousConversation = root.querySelector('#persistentMessages');
+    const previousThread = Number(previousConversation?.dataset.thread || 0);
+    const previousScrollTop = previousConversation?.scrollTop || 0;
+    const wasAtBottom = previousConversation && previousConversation.scrollHeight - previousScrollTop - previousConversation.clientHeight < 48;
+    root.innerHTML = '<h2>Messages</h2><p class="sub">Your conversations with House Assist customers and house helps.</p><div class="card" role="status">Loading conversations…</div>';
+    try {
+      const threads = await request('/threads');
+      if (run !== messageRenderRun || S.view !== 'messages') return;
+      let selected = threads.find(thread => Number(thread.id) === Number(S.chat));
+      if (!selected && threads.length) { selected = threads[0]; S.chat = selected.id; }
+      const items = selected ? await request(`/threads/${selected.id}/messages`) : [];
+      if (run !== messageRenderRun || S.view !== 'messages') return;
+      root.innerHTML = `<h2>Messages</h2><p class="sub">Your conversations with House Assist customers and house helps.</p>
+        <div class="chat ${selected ? 'open' : ''}"><aside class="cl">${threads.length ? threads.map((thread,index) => `<button type="button" class="crow ${selected && Number(thread.id)===Number(selected.id) ? 'on' : ''}" data-thread="${Number(thread.id)}"><span class="av" style="background:${['#d8eaf0','#b9d9e2','#eaf4f6','#a6cbd7'][index%4]};width:44px;height:44px;font-size:16px;flex:none">${safeHtml(String(thread.peer_name||'?').split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase())}</span><span><b>${safeHtml(thread.peer_name)}</b><small>${safeHtml(thread.last_message)}</small></span></button>`).join('') : '<p class="mut" style="padding:20px">No conversations yet. Open a house help profile and choose Text to start one.</p>'}</aside>
+        <section class="ct">${selected ? `<div class="cth"><span class="av" style="background:#d8eaf0;width:42px;height:42px;font-size:15px">${safeHtml(String(selected.peer_name||'?').split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase())}</span><b>${safeHtml(selected.peer_name)}</b></div>
+          <div class="ms" id="persistentMessages" data-thread="${Number(selected.id)}">${items.length ? items.map(item => `<div class="bub ${item.mine?'me':'them'}">${safeHtml(item.body)}<small>${safeHtml(messageTime(item.created_at))}</small></div>`).join('') : `<div class="empty">Say hello to ${safeHtml(String(selected.peer_name||'your contact').split(' ')[0])}.</div>`}</div>
+          <form class="cmp" id="messageCompose"><input id="messageInput" maxlength="2000" placeholder="Type a message" autocomplete="off" aria-label="Message"><button type="submit" class="btn">Send</button></form>` : '<div class="empty">Select a conversation or open a house help profile to start one.</div>'}</section></div>`;
+      const list = root.querySelector('.cl');
+      if (list) list.onclick = event => {
+        const button = event.target.closest('[data-thread]');
+        if (!button) return;
+        S.chat = Number(button.dataset.thread);
+        messages();
+      };
+      const conversation = root.querySelector('#persistentMessages');
+      if (conversation) {
+        if (previousThread === Number(conversation.dataset.thread) && !wasAtBottom) conversation.scrollTop = previousScrollTop;
+        else conversation.scrollTop = conversation.scrollHeight;
+      }
+      const form = root.querySelector('#messageCompose');
+      if (form) form.onsubmit = async event => {
+        event.preventDefault();
+        const input = root.querySelector('#messageInput');
+        const button = form.querySelector('button');
+        const text = input.value.trim();
+        if (!text || button.disabled) return;
+        button.disabled = true;
+        try {
+          await request(`/threads/${selected.id}/messages`, { method: 'POST', body: JSON.stringify({ body: text }) });
+          await messages();
+        } catch (err) { showError(err); button.disabled = false; }
+      };
+      messageRefreshTimer = setTimeout(() => { if (S.view === 'messages') messages(); }, 15000);
+    } catch (err) {
+      if (run === messageRenderRun) root.innerHTML = `<h2>Messages</h2><p class="card" role="alert">${safeHtml(err.message||'Messages could not be loaded.')}</p><button class="btn" id="retryMessages">Retry</button>`;
+      root.querySelector('#retryMessages')?.addEventListener('click', messages, { once: true });
+    }
+  };
 
   hired = async function () {
     try {
@@ -353,10 +454,10 @@
     const { h, m, b } = P;
     const banks = ['GCB Bank', 'Ecobank Ghana', 'Stanbic Bank', 'Absa Ghana', 'Fidelity Bank'];
     const networks = ['MTN MoMo', 'Telecel Cash', 'AT Money'];
-    let content = `<h3 style="font-size:24px">Hire ${h.n}</h3><p class="mut">GH₵ ${h.p} per day · call ${h.ph} to agree the details.</p><label>How will you pay?</label><button class="opt ${m === 'cash' ? 'on' : ''}" data-method="cash">Cash</button><button class="opt ${m === 'bank' ? 'on' : ''}" data-method="bank">Bank payment</button><button class="opt ${m === 'momo' ? 'on' : ''}" data-method="momo">Mobile money</button>`;
+    let content = `<h3 style="font-size:24px">Hire ${safeHtml(h.n)}</h3><p class="mut">GH₵ ${Number(h.p)||0} per day · call ${safeHtml(h.ph||'the house help')} to agree the details.</p><label>How will you pay?</label><button class="opt ${m === 'cash' ? 'on' : ''}" data-method="cash">Cash</button><button class="opt ${m === 'bank' ? 'on' : ''}" data-method="bank">Bank payment</button><button class="opt ${m === 'momo' ? 'on' : ''}" data-method="momo">Mobile money</button>`;
     if (m === 'bank') content += `<label>Choose your bank<select id="payDetail">${banks.map(x => `<option ${b === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>`;
     if (m === 'momo') content += `<label>Choose a network<select id="payDetail">${networks.map(x => `<option ${b === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>`;
-    if (m) content += `<div class="step"><span class="dot ${P.cp ? 'ok' : ''}">${P.cp ? '✓' : ''}</span>You confirm you have paid</div><div class="step"><span class="dot ${P.hp ? 'ok' : ''}">${P.hp ? '✓' : ''}</span>${h.n.split(' ')[0]} confirms they received it</div>${P.cp && P.hp ? '<button class="btn" id="rateHire" style="width:100%">Rate & recommend</button>' : `<button class="btn" id="paid" style="width:100%" ${P.cp ? 'disabled' : ''}>I have paid</button>`}<p class="mut" style="font-size:13px;margin-bottom:0">This records confirmations only; it does not process or verify a payment.</p>`;
+    if (m) content += `<div class="step"><span class="dot ${P.cp ? 'ok' : ''}">${P.cp ? '✓' : ''}</span>You confirm you have paid</div><div class="step"><span class="dot ${P.hp ? 'ok' : ''}">${P.hp ? '✓' : ''}</span>${safeHtml(h.n.split(' ')[0])} confirms they received it</div>${P.cp && P.hp ? '<button class="btn" id="rateHire" style="width:100%">Rate & recommend</button>' : `<button class="btn" id="paid" style="width:100%" ${P.cp ? 'disabled' : ''}>I have paid</button>`}<p class="mut" style="font-size:13px;margin-bottom:0">This records confirmations only; it does not process or verify a payment.</p>`;
     modal(content + '<button class="btn alt" style="width:100%;margin-top:12px" id="cl">Close</button>');
     $('#cl').onclick = () => modal(0);
     document.querySelectorAll('[data-method]').forEach(button => button.onclick = () => { if (!P.cp) { P.m = button.dataset.method; P.b = ''; pay(); } });
@@ -375,7 +476,7 @@
   };
   rate = function () {
     let stars = 0;
-    modal(`<h3 style="font-size:24px">How was ${P.h.n.split(' ')[0]}?</h3><p class="mut">Give a rating, a recommendation, or both.</p><div class="rate" id="rs">${[1,2,3,4,5].map(i => `<span data-i="${i}">★</span>`).join('')}</div><label>Recommendation (optional)<input id="rv" placeholder="What went well?"></label><button class="btn" id="sb" style="width:100%">Submit</button>`);
+    modal(`<h3 style="font-size:24px">How was ${safeHtml(P.h.n.split(' ')[0])}?</h3><p class="mut">Give a rating, a recommendation, or both.</p><div class="rate" id="rs">${[1,2,3,4,5].map(i => `<span data-i="${i}">★</span>`).join('')}</div><label>Recommendation (optional)<input id="rv" placeholder="What went well?"></label><button class="btn" id="sb" style="width:100%">Submit</button>`);
     $('#rs').onclick = e => { if (e.target.dataset.i) { stars = Number(e.target.dataset.i); document.querySelectorAll('#rs span').forEach((s, i) => s.classList.toggle('on', i < stars)); } };
     $('#sb').onclick = async () => {
       const recommendation = $('#rv').value.trim();
@@ -386,17 +487,40 @@
   };
 
   const originalProfile = profile;
+  const saveProfilePatch = async (button, payload, successMessage) => {
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    try {
+      const updated = await request('/me', { method: 'PATCH', body: JSON.stringify(payload) });
+      S.user = { ...S.user, ...updated };
+      $('#who').textContent = `${S.user.name} · ${S.role === 'helper' ? 'House help' : 'Customer'}`;
+      if (payload.password) $('#profilePassword').value = '';
+      await refreshHelpers();
+      toast(successMessage);
+    } catch (err) { showError(err); }
+    finally { button.disabled = false; }
+  };
   profile = function () {
     originalProfile();
-    const fields = $('#view').querySelectorAll('.card:first-child input');
-    const save = $('#view').querySelector('.card:first-child .btn');
-    if (save) save.onclick = async () => {
-      try {
-        await request('/me', { method: 'PATCH', body: JSON.stringify({ username: fields[1]?.value || S.user.name, password: fields[2]?.value || '', theme: S.theme || 'Ocean', layout: S.lay, compact: S.dense, colors: [...$('#view').querySelectorAll('[data-c]')].map(x => x.value) }) });
-        S.user.name = fields[1]?.value || S.user.name; $('#who').textContent = `${S.user.name} · ${S.role === 'helper' ? 'House help' : 'Customer'}`;
-        toast('Profile saved');
-      } catch (err) { showError(err); }
-    };
+    const profileSave = $('#psave');
+    if (profileSave) profileSave.onclick = () => saveProfilePatch(profileSave, {
+      bio: $('#pb').value.trim(),
+      ...(S.role === 'helper' ? {
+        phone: $('#pph').value.trim(),
+        experience: $('#px').value.trim(),
+        availability: $('#pav').value.trim(),
+        languages: $('#plg').value.trim(),
+        price: Number($('#ppr').value),
+      } : {}),
+      theme: S.theme || 'Ocean', layout: S.lay, compact: S.dense,
+      colors: [...$('#view').querySelectorAll('[data-c]')].map(x => x.value),
+    }, 'Profile saved');
+    const accountSave = $('#saveAccountDetails');
+    if (accountSave) accountSave.onclick = () => saveProfilePatch(accountSave, {
+      username: $('#profileUsername').value.trim(),
+      location: $('#profileLocation').value.trim(),
+      password: $('#profilePassword').value,
+    }, 'Account details saved');
     $('#view').querySelectorAll('[data-t]').forEach(button => button.onclick = async () => {
       S.theme = button.dataset.t; setTheme(THEMES[S.theme]); profile();
       try { await request('/me', { method: 'PATCH', body: JSON.stringify({ theme: S.theme, layout: S.lay, compact: S.dense, colors: [] }) }); } catch (err) { showError(err); }
@@ -443,8 +567,16 @@
     };
     $('#adminLoginForm').onsubmit = authenticateAdmin;
     $('#adminLoginButton').onclick = authenticateAdmin;
-    $('#adminLogout').onclick = () => {
+    $('#adminLogout').onclick = async () => {
+      const old = token;
       storeToken('');
+      if (old) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        try { await fetch(API + '/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${old}` }, signal: controller.signal }); }
+        catch { /* The browser-side admin session is cleared either way. */ }
+        finally { clearTimeout(timeout); }
+      }
       $('#adminPanel').classList.add('hide');
       $('#adminLogin').classList.remove('hide');
       $('#adminPassword').value = '';
@@ -462,8 +594,8 @@
       const data = await request('/admin/summary');
       $('#adminPanelError').classList.add('hide');
       $('#adminPanelErrorText').textContent = '';
-      H(adminRoot(), `<h2>Admin centre</h2><p class="sub">Monitor registrations, hires and the platform brand.</p><div class="stats"><div class="card"><span class="price">${data.hires}</span><span class="mut">Hires recorded</span></div><div class="card"><span class="price">${data.helpers}</span><span class="mut">House helps</span></div><div class="card"><span class="price">${data.customers}</span><span class="mut">Customers</span></div></div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"><div class="card"><h3>Recent registrations</h3>${data.users.map(u => `<div class="step"><span class="dot ok">!</span>${u.username} · ${u.role}</div>`).join('') || '<p class="mut">No registrations yet.</p>'}<h3 style="margin-top:16px">Add a user</h3><input id="nu" placeholder="Username"><input id="np" type="password" placeholder="Temporary password (6+ characters)"><button class="btn" id="au">Add user</button></div><div class="card"><h3>Branding</h3><label>Site name<input id="sn" value="${data.branding.name}"></label><label>Logo letter or emoji<input id="lg" value="${data.branding.mark}" maxlength="2"></label><label>Favicon emoji<input id="fv" value="${data.branding.favicon}" maxlength="2"></label><button class="btn" id="sv2">Apply branding</button></div></div>`);
-      $('#au').onclick = async () => { try { await request('/admin/users', { method: 'POST', body: JSON.stringify({ username: $('#nu').value, password: $('#np').value }) }); toast('User added'); admin(); } catch (err) { showError(err); } };
+      H(adminRoot(), `<h2>Admin centre</h2><p class="sub">Monitor registrations, hires and the platform brand.</p><div class="stats"><div class="card"><span class="price">${Number(data.hires)||0}</span><span class="mut">Hires recorded</span></div><div class="card"><span class="price">${Number(data.helpers)||0}</span><span class="mut">House helps</span></div><div class="card"><span class="price">${Number(data.customers)||0}</span><span class="mut">Customers</span></div></div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"><div class="card"><h3>Recent registrations</h3>${data.users.map(u => `<div class="step"><span class="dot ok">!</span>${safeHtml(u.username)} · ${safeHtml(u.role)}</div>`).join('') || '<p class="mut">No registrations yet.</p>'}<h3 style="margin-top:16px">Add a user</h3><input id="nu" placeholder="Username"><input id="ne" type="email" placeholder="Customer email"><input id="np" type="password" minlength="10" maxlength="128" placeholder="Temporary password"><button class="btn" id="au">Add a user</button></div><div class="card"><h3>Branding</h3><label>Site name<input id="sn" value="${safeHtml(data.branding.name)}"></label><label>Logo letter or emoji<input id="lg" value="${safeHtml(data.branding.mark)}" maxlength="2"></label><label>Favicon emoji<input id="fv" value="${safeHtml(data.branding.favicon)}" maxlength="2"></label><button class="btn" id="sv2">Apply branding</button></div></div>`);
+      $('#au').onclick = async () => { try { await request('/admin/users', { method: 'POST', body: JSON.stringify({ username: $('#nu').value, email: $('#ne').value, password: $('#np').value }) }); toast('User added'); admin(); } catch (err) { showError(err); } };
       $('#sv2').onclick = async () => { try { const brand = await request('/admin/branding', { method: 'PATCH', body: JSON.stringify({ name: $('#sn').value, mark: $('#lg').value, favicon: $('#fv').value }) }); applyBranding(brand); toast('Branding saved'); } catch (err) { showError(err); } };
     } catch (err) {
       $('#adminPanelErrorText').textContent = err.message || 'The administrator dashboard could not be loaded.';
@@ -478,9 +610,9 @@
   };
 
   let adminSection = 'overview';
-  const adminEscape = value => { const node = document.createElement('span'); node.textContent = value == null ? '' : String(value); return node.innerHTML; };
+  const adminEscape = value => safeHtml(value);
   const adminDate = value => value ? new Date(Number(value) * 1000).toLocaleString() : '—';
-  const adminSections = [['overview','Overview'],['users','Accounts'],['helpers','House helps'],['hires','Hires'],['ratings','Feedback'],['settings','Settings']];
+  const adminSections = [['overview','Overview'],['users','Accounts'],['helpers','House helps'],['hires','Hires'],['ratings','Feedback'],['contact','Contact inbox'],['settings','Settings']];
   const adminRequest = async (path, options = {}) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
@@ -504,7 +636,7 @@
       } else if (section === 'users') {
         const q = root.querySelector('#adminSearch')?.value || '';
         const rows = await adminRequest(`/admin/users?q=${encodeURIComponent(q)}`);
-        content = `<div class="card"><div class="admin-toolbar"><div><h3>Accounts</h3><p class="mut">Customers and house helps registered on House Assist.</p></div><form id="adminSearchForm" class="admin-search"><input id="adminSearch" placeholder="Search name, email, or location" value="${adminEscape(q)}"><button class="btn alt" type="button">Search</button></form></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Location</th><th>Joined</th></tr></thead><tbody>${rows.map(u => `<tr><td>${adminEscape(u.username)}</td><td>${adminEscape(u.email||'—')}</td><td>${adminEscape(u.role)}</td><td>${adminEscape(u.location)}</td><td>${adminDate(u.created_at)}</td></tr>`).join('')||'<tr><td colspan="5">No matching accounts.</td></tr>'}</tbody></table></div></div><div class="card admin-add-user"><h3>Create a customer account</h3><p class="mut">Creates an account through Supabase Auth. Share the temporary password securely.</p><div class="admin-form-row"><label>Username<input id="nu" placeholder="Customer username"></label><label>Temporary password<input id="np" type="password" minlength="6" placeholder="At least 6 characters"></label><button class="btn" id="au" type="button">Create account</button></div></div>`;
+        content = `<div class="card"><div class="admin-toolbar"><div><h3>Accounts</h3><p class="mut">Customers and house helps registered on House Assist.</p></div><form id="adminSearchForm" class="admin-search"><input id="adminSearch" placeholder="Search name, email, or location" value="${adminEscape(q)}"><button class="btn alt" type="button">Search</button></form></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Location</th><th>Joined</th></tr></thead><tbody>${rows.map(u => `<tr><td>${adminEscape(u.username)}</td><td>${adminEscape(u.email||'—')}</td><td>${adminEscape(u.role)}</td><td>${adminEscape(u.location)}</td><td>${adminDate(u.created_at)}</td></tr>`).join('')||'<tr><td colspan="5">No matching accounts.</td></tr>'}</tbody></table></div></div><div class="card admin-add-user"><h3>Create a customer account</h3><p class="mut">Creates an account through Supabase Auth. Share the temporary password securely.</p><div class="admin-form-row"><label>Username<input id="nu" placeholder="Customer username" maxlength="40"></label><label>Email<input id="ne" type="email" placeholder="Customer email" autocomplete="email"></label><label>Temporary password<input id="np" type="password" minlength="10" maxlength="128" placeholder="At least 10 characters"></label><button class="btn" id="au" type="button">Create account</button></div></div>`;
       } else if (section === 'helpers') {
         const q = root.querySelector('#adminSearch')?.value || '';
         const rows = await adminRequest(`/admin/helpers?q=${encodeURIComponent(q)}`);
@@ -517,6 +649,9 @@
       } else if (section === 'ratings') {
         const rows = await adminRequest('/admin/ratings');
         content = `<div class="card"><h3>Customer feedback</h3><p class="mut">Feedback stays linked to its completed hire record.</p><div class="admin-record-list">${rows.map(r => `<article class="admin-feedback"><div class="admin-record-heading"><div><strong>${adminEscape(r.customer_name)}</strong><span class="mut"> reviewed ${adminEscape(r.helper_name)} · hire #${r.hire_id}</span></div><span>${r.stars?`${r.stars} / 5`:'Written feedback'}</span></div><p>${adminEscape(r.recommendation||'No written recommendation.')}</p><span class="mut">${adminDate(r.created_at)}</span></article>`).join('')||'<p class="mut">No feedback has been submitted.</p>'}</div></div>`;
+      } else if (section === 'contact') {
+        const rows = await adminRequest('/admin/contact');
+        content = `<div class="card"><div class="admin-toolbar"><div><h3>Contact inbox</h3><p class="mut">Messages submitted through the public contact form. Reply to people by email when they provide one.</p></div><span class="pill">${rows.filter(row => !row.read_at).length} unread</span></div><div class="admin-record-list">${rows.map(row => `<article class="admin-feedback"><div class="admin-record-heading"><div><strong>${adminEscape(row.name)}</strong>${row.email ? ` · <a href="mailto:${encodeURIComponent(row.email)}">${adminEscape(row.email)}</a>` : ' · No email supplied'}</div><span>${row.read_at ? 'Read' : 'Unread'}</span></div><p>${adminEscape(row.body)}</p><div class="admin-record-heading"><span class="mut">${adminDate(row.created_at)}</span>${row.read_at ? '' : `<button type="button" class="btn alt" data-contact-read="${Number(row.id)}">Mark as read</button>`}</div></article>`).join('')||'<p class="mut">No messages have been received.</p>'}</div></div>`;
       } else {
         const d = await adminRequest('/admin/summary');
         content = `<div class="grid admin-settings-grid"><div class="card"><h3>Site branding</h3><p class="mut">These values appear on the site and its page icon.</p><label>Site name<input id="sn" value="${adminEscape(d.branding.name)}" maxlength="60"></label><label>Logo letter or emoji<input id="lg" value="${adminEscape(d.branding.mark)}" maxlength="2"></label><label>Favicon emoji<input id="fv" value="${adminEscape(d.branding.favicon)}" maxlength="2"></label><button class="btn" id="sv2" type="button">Save branding</button></div><div class="card"><h3>Admin session</h3><p class="mut">The server password protects this session, which expires after one hour.</p><button class="btn alt" id="adminLogoutSettings" type="button">Log out</button></div></div>`;
@@ -525,7 +660,8 @@
       root.querySelectorAll('[data-admin-section]').forEach(b => b.onclick = () => renderAdminSection(b.dataset.adminSection));
       const search = root.querySelector('#adminSearchForm');
       if (search) { search.onsubmit = e => { e.preventDefault(); renderAdminSection(section); }; search.querySelector('button').onclick = () => renderAdminSection(section); }
-      if (section === 'users') root.querySelector('#au').onclick = async () => { try { await request('/admin/users',{method:'POST',body:JSON.stringify({username:root.querySelector('#nu').value,password:root.querySelector('#np').value})}); toast('Customer account created'); renderAdminSection('users'); } catch(err) { showError(err); } };
+      if (section === 'users') root.querySelector('#au').onclick = async () => { try { await request('/admin/users',{method:'POST',body:JSON.stringify({username:root.querySelector('#nu').value,email:root.querySelector('#ne').value,password:root.querySelector('#np').value})}); toast('Customer account created'); renderAdminSection('users'); } catch(err) { showError(err); } };
+      if (section === 'contact') root.querySelectorAll('[data-contact-read]').forEach(button => button.onclick = async () => { button.disabled = true; try { await request(`/admin/contact/${Number(button.dataset.contactRead)}`, { method: 'PATCH', body: '{}' }); renderAdminSection('contact'); } catch (err) { button.disabled = false; showError(err); } });
       if (section === 'helpers') root.querySelectorAll('[data-helper-id]').forEach(form => form.querySelector('button').onclick = async e => { e.preventDefault(); if (!form.reportValidity()) return; const f=new FormData(form); try { await request(`/admin/helpers/${form.dataset.helperId}`,{method:'PATCH',body:JSON.stringify({name:f.get('name'),location:f.get('location'),price:Number(f.get('price')),phone:f.get('phone'),services:f.getAll('services')})}); toast('House help listing saved'); renderAdminSection('helpers'); } catch(err) { showError(err); } });
       if (section === 'settings') {
         root.querySelector('#sv2').onclick = async () => { try { const b=await request('/admin/branding',{method:'PATCH',body:JSON.stringify({name:root.querySelector('#sn').value,mark:root.querySelector('#lg').value,favicon:root.querySelector('#fv').value})}); applyBranding(b); toast('Branding saved'); } catch(err) { showError(err); } };
@@ -604,18 +740,16 @@
     try {
       const googleHandled = await finishGoogleSignIn();
       if (googleHandled) return;
-      if (token) {
-        const user = await request('/me'); applyUser(user); go('home');
-        return;
-      }
       const brand = await request('/branding').catch(() => null);
       applyBranding(brand);
-      if (!token) return;
-      const user = await request('/me'); applyUser(user);
-      S.lay = user.layout || 'grid'; S.dense = Boolean(user.compact); S.theme = user.theme || 'Ocean';
-      if (THEMES[S.theme]) setTheme(THEMES[S.theme]);
-      (user.colors || []).forEach((value, i) => document.documentElement.style.setProperty(['--bg', '--sf', '--ink', '--ac'][i], value));
-      document.body.classList.toggle('dense', S.dense); go('home');
+      if (token) {
+        const user = await request('/me');
+        applyUser(user);
+        S.lay = user.layout || 'grid'; S.dense = Boolean(user.compact); S.theme = user.theme || 'Ocean';
+        if (THEMES[S.theme]) setTheme(THEMES[S.theme]);
+        (user.colors || []).forEach((value, i) => document.documentElement.style.setProperty(['--bg', '--sf', '--ink', '--ac'][i], value));
+        document.body.classList.toggle('dense', S.dense); go('home');
+      }
     } catch (err) {
       if (oauthCallback) {
         let pendingReset = null;
