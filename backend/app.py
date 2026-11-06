@@ -558,6 +558,10 @@ def google_login():
         return error(str(exc), 401)
 
     data = body()
+    requested_role = data.get("role")
+    requested_mode = data.get("mode")
+    if requested_role not in ("customer", "helper") or requested_mode not in ("login", "signup"):
+        return error("Your selected account type was not preserved. Return to sign-in, choose Customer or House help, and try Google again.", 400)
     user_id = google_user.get("id")
     email = str(google_user.get("email", "")).strip().lower()
     if not valid_email(email):
@@ -626,6 +630,9 @@ def google_login():
     elif not row["email"]:
         g.db.execute("UPDATE house_assist.users SET email=? WHERE id=?", (email, user_id))
         g.db.commit()
+    if requested_role in ("customer", "helper") and requested_role != row["role"]:
+        account_type = "customer" if row["role"] == "customer" else "house help"
+        return error(f"This Google account is registered as a {account_type}. Choose that account type to continue, or select a different Google account.", 409)
     token = token_for(row["role"], row["id"])
     return jsonify({"token": token, "user": {"id": row["id"], "name": row["username"], "role": row["role"], "loc": row["location"]}})
 

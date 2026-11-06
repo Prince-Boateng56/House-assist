@@ -74,10 +74,16 @@
       const config = await request('/auth/config');
       if (!window.supabase) throw new Error('The Google sign-in library could not be loaded.');
       supabaseClient = createSupabaseClient(config);
-      sessionStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify({ ...details, username: '', mode: S.mode }));
+      // The installed PWA may return from Google in a different tab or browser
+      // context, where sessionStorage is unavailable. Keep the intended role
+      // with the OAuth state in localStorage until the callback is handled.
+      localStorage.setItem(GOOGLE_PENDING_KEY, JSON.stringify({ ...details, username: '', mode: S.mode, timestamp: Date.now() }));
       const { error: oauthError } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin + window.location.pathname },
+        options: {
+          redirectTo: window.location.origin + window.location.pathname,
+          queryParams: { prompt: 'select_account' },
+        },
       });
       if (oauthError) throw oauthError;
     } catch (err) { reportError($('#aErr'), err); }
@@ -152,13 +158,18 @@
       $('#newPassword').focus();
       return true;
     }
-    const details = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
+    let details = {};
+    try { details = JSON.parse(localStorage.getItem(GOOGLE_PENDING_KEY) || '{}'); }
+    catch { /* handled below as a missing or invalid sign-in state */ }
+    if (!['customer', 'helper'].includes(details.role) || !['login', 'signup'].includes(details.mode)) {
+      throw new Error('Your Google sign-in details expired. Choose your account type and try again.');
+    }
     const result = await request('/auth/google', {
       method: 'POST',
       headers: { Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify(details),
     });
-    sessionStorage.removeItem(GOOGLE_PENDING_KEY);
+    localStorage.removeItem(GOOGLE_PENDING_KEY);
     storeToken(result.token);
     applyUser(result.user);
     await refreshHelpers();
@@ -761,7 +772,8 @@
           console.warn('Password reset did not complete:', err.message);
           return;
         }
-        const pending = JSON.parse(sessionStorage.getItem(GOOGLE_PENDING_KEY) || '{}');
+        let pending = {};
+        try { pending = JSON.parse(localStorage.getItem(GOOGLE_PENDING_KEY) || '{}'); } catch { /* ignore invalid sign-in state */ }
         // The selected role is present for both signup and login. Restore the
         // actual mode saved before leaving for Google instead of treating every
         // callback as a signup (or silently falling back to login).
